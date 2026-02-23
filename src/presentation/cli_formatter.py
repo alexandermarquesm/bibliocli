@@ -47,3 +47,21 @@ class CLIFormatter:
         else:
             self.console.print("\n[bold red]✗ Falha no download.[/bold red]")
             self.console.print("Verifique se a URL enviada é suportada.\n")
+
+    def show_restricted_book_info(self, info: BookSearchResult):
+        """Mostra uma tabela com as informações do livro que requer empréstimo."""
+        self.console.print("\n[bold yellow]⚠ Este livro está protegido e requer empréstimo no Open Library.[/bold yellow]")
+        
+        table = Table(title="Informações do Livro Restrito")
+        table.add_column("Fonte", style="cyan")
+        table.add_column("Livro", style="magenta")
+        table.add_column("Idioma(s)", style="green")
+        table.add_column("Link (URL)", style="blue")
+        
+        table.add_row(info.source, info.title, info.language, info.link)
+        self.console.print(table)
+        
+        self.console.print("\n[bold]Para acessá-lo:[/bold]")
+        self.console.print("1. Acesse o link acima no seu navegador.")
+        self.console.print("2. Faça login na sua conta do Internet Archive/Open Library.")
+        self.console.print("3. Clique em [blue]'Borrow'[/blue] (Empréstimo).\n")

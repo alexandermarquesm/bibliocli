@@ -8,6 +8,12 @@ from abc import ABC, abstractmethod
 from typing import List
 from src.domain.entities import BookSearchResult
 
+class RestrictedBookError(Exception):
+    """Exceção lançada quando um livro exige login/empréstimo para ser baixado."""
+    def __init__(self, message: str, info: BookSearchResult = None):
+        super().__init__(message)
+        self.info = info
+
 class BookSearchProvider(ABC):
     """
     Interface/Contrato (Port) do que um Provedor de Busca deve fazer.

@@ -67,6 +67,9 @@ class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
                 print(f"Tentando baixar {txt_url}...")
                 r = requests.get(txt_url, headers=headers)
                 if r.status_code == 200:
+                    if len(r.content) < 1000: # Mínimo 1KB para um livro
+                        print(f"Aviso: Arquivo baixado de {txt_url} parece muito pequeno ({len(r.content)} bytes).")
+                        continue
                     with open(destiny_path, "wb") as f: # b para evitar bug de encoding na escrita 
                         f.write(r.content)
                     return True

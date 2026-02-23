@@ -62,17 +62,24 @@ def main():
         cli.print_results(args.termo, resultados)
 
     elif args.command == "download":
-        # Apenas providers que suportam download
-        download_providers = [p for p in providers if hasattr(p, 'download')]
+        # Filtra dinamicamente quem implementa a interface de download
+        from src.application.interfaces import BookDownloadProvider, RestrictedBookError
+        download_providers = [p for p in providers if isinstance(p, BookDownloadProvider)]
         
         use_case = DownloadBookUseCase(providers=download_providers)
         destiny_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "ebooks")
         os.makedirs(destiny_dir, exist_ok=True)
 
-        with cli.console.status(f"[bold blue]Analisando URL e Iniciando Download...[/bold blue]"):
-            sucesso, final_path = use_case.execute(args.url, destiny_dir, name=args.name)
-        
-        cli.show_download_status(sucesso, final_path)
+        try:
+            with cli.console.status(f"[bold blue]Analisando URL e Iniciando Download...[/bold blue]"):
+                sucesso, final_path = use_case.execute(args.url, destiny_dir, name=args.name)
+            
+            # Note: Se sucesso for False e não lançou exceção, é uma falha comum
+            cli.show_download_status(sucesso, final_path)
+        except RestrictedBookError as e:
+            cli.show_restricted_book_info(e.info)
+        except Exception as e:
+            cli.console.print(f"[bold red]Erro inesperado:[/bold red] {e}")
 
 if __name__ == "__main__":
     main()
