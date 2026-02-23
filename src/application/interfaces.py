@@ -1,0 +1,41 @@
+import sys
+import os
+
+# Adiciona ao sys.path para importações absolutas limpas (opcional num projeto uv configurado, mas prático guiado por script direto)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+from abc import ABC, abstractmethod
+from typing import List
+from src.domain.entities import BookSearchResult
+
+class BookSearchProvider(ABC):
+    """
+    Interface/Contrato (Port) do que um Provedor de Busca deve fazer.
+    A camada de Aplicação só conversa com isso, e a Infraestrutura é obrigada a implementá-la.
+    """
+    @abstractmethod
+    def search(self, query: str) -> List[BookSearchResult]:
+        pass
+
+    @abstractmethod
+    def search_by_author(self, author: str) -> List[BookSearchResult]:
+        pass
+
+class BookDownloadProvider(ABC):
+    """
+    Interface/Contrato (Port) para Provedores de Download.
+    """
+    @abstractmethod
+    def can_download(self, url: str) -> bool:
+        """Verifica se esse provedor é responsável pela URL recebida"""
+        pass
+
+    @abstractmethod
+    def download(self, url: str, destiny_path: str) -> bool:
+        """Baixa o conteúdo do livro para o disco e retorna True se teve sucesso"""
+        pass
+
+    @abstractmethod
+    def get_info(self, url: str) -> BookSearchResult:
+        """Busca informações básicas do livro (como título) a partir da URL"""
+        pass
