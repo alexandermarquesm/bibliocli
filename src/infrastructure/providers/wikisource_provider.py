@@ -22,13 +22,18 @@ class WikisourceProvider(BookSearchProvider, BookDownloadProvider):
             ).json()
             for item in r_pt.get("query", {}).get("search", [])[:3]:
                 title = item["title"]
+                import re
+                year_match = re.search(r'\((\d{4})\)', title)
+                year = year_match.group(1) if year_match else None
                 
                 # Traduz do JSON para a Entidade de Domínio Pura
                 results.append(BookSearchResult(
                     source="Wikisource (PT)",
                     title=title,
+                    author="Autor Desconhecido",
                     language="pt-br",
-                    link=f"https://pt.wikisource.org/wiki/{title.replace(' ', '_')}"
+                    link=f"https://pt.wikisource.org/wiki/{title.replace(' ', '_')}",
+                    year=year
                 ))
         except Exception:
             pass
@@ -42,13 +47,18 @@ class WikisourceProvider(BookSearchProvider, BookDownloadProvider):
             ).json()
             for item in r_en.get("query", {}).get("search", [])[:3]:
                 title = item["title"]
+                import re
+                year_match = re.search(r'\((\d{4})\)', title)
+                year = year_match.group(1) if year_match else None
                 
                 # Traduz do JSON para a Entidade de Domínio Pura
                 results.append(BookSearchResult(
                     source="Wikisource (EN)",
                     title=title,
+                    author="Autor Desconhecido",
                     language="en",
-                    link=f"https://en.wikisource.org/wiki/{title.replace(' ', '_')}"
+                    link=f"https://en.wikisource.org/wiki/{title.replace(' ', '_')}",
+                    year=year
                 ))
         except Exception:
             pass
@@ -149,9 +159,16 @@ class WikisourceProvider(BookSearchProvider, BookDownloadProvider):
     def get_info(self, url: str) -> BookSearchResult:
         title = url.split("/wiki/")[-1].replace("_", " ")
         domain = "PT" if "pt.wikisource.org" in url else "EN"
+        
+        import re
+        year_match = re.search(r'\((\d{4})\)', title)
+        year = year_match.group(1) if year_match else None
+        
         return BookSearchResult(
             source=f"Wikisource ({domain})",
             title=title,
+            author="Autor Desconhecido",
             language="pt" if domain == "PT" else "en",
-            link=url
+            link=url,
+            year=year
         )

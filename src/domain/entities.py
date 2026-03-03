@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 @dataclass
 class BookSearchResult:
@@ -9,5 +10,7 @@ class BookSearchResult:
     """
     source: str
     title: str
+    author: str
     language: str
     link: str
+    year: Optional[str] = None

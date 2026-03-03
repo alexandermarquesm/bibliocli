@@ -17,13 +17,31 @@ class DownloadBookUseCase:
     def execute(self, url: str, destiny_dir: str, name: str = None) -> (bool, str):
         for provider in self.providers:
             if provider.can_download(url):
+                info = provider.get_info(url)
+                
                 if not name:
-                    info = provider.get_info(url)
                     name = info.title if info else "livro_desconhecido"
                 
-                # Sanitiza o nome para arquivo
-                safe_name = "".join([c for c in name if c.isalnum() or c in (' ', '.', '_')]).strip()
-                final_path = os.path.join(destiny_dir, f"{safe_name}.txt")
+                author_name = info.author if info else "Autor Desconhecido"
+                
+                # Sanitiza nomes para diretórios e arquivos
+                def sanitize(text):
+                    return "".join([c for c in text if c.isalnum() or c in (' ', '.', '_', '-')]).strip()
+
+                safe_name = sanitize(name)
+                safe_author = sanitize(author_name)
+                
+                # Garante que não temos extensão duplicada se o usuário passou .txt
+                if safe_name.lower().endswith(".txt"):
+                    filename = safe_name
+                else:
+                    filename = f"{safe_name}.txt"
+                
+                # Cria diretório do autor
+                author_dir = os.path.join(destiny_dir, safe_author)
+                os.makedirs(author_dir, exist_ok=True)
+                
+                final_path = os.path.join(author_dir, filename)
                 
                 success = provider.download(url, final_path)
                 return success, final_path

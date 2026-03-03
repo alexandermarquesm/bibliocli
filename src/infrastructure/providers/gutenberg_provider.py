@@ -14,19 +14,26 @@ class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
         results = []
         try:
             r = requests.get(f"https://gutendex.com/books/?search={query}").json()
-            for item in r.get("results", [])[:5]:
+            # Retorna os 20 primeiros resultados para não poluir infinitamente o terminal
+            # mas o suficiente para parecer com a busca da web
+            for item in r.get("results", [])[:20]:
                 langs = item.get("languages", [])
                 if not langs:
                     continue
                 lang_str = ", ".join(langs)
                 book_id = item["id"]
                 
+                authors = item.get("authors", [])
+                author_name = authors[0].get("name", "Autor Desconhecido") if authors else "Autor Desconhecido"
+                
                 # Traduz do JSON para a nossa Entidade de Domínio Pura
                 results.append(BookSearchResult(
                     source="Project Gutenberg",
                     title=item["title"],
+                    author=author_name,
                     language=lang_str,
-                    link=f"https://www.gutenberg.org/ebooks/{book_id}"
+                    link=f"https://www.gutenberg.org/ebooks/{book_id}",
+                    year=None
                 ))
         except Exception:
             pass
@@ -90,11 +97,15 @@ class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
             if "title" in r:
                 langs = r.get("languages", [])
                 lang_str = ", ".join(langs) if langs else "desconhecido"
+                authors = r.get("authors", [])
+                author_name = authors[0].get("name", "Autor Desconhecido") if authors else "Autor Desconhecido"
                 return BookSearchResult(
                     source="Project Gutenberg",
                     title=r["title"],
+                    author=author_name,
                     language=lang_str,
-                    link=url
+                    link=url,
+                    year=None
                 )
         except Exception:
             pass

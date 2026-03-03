@@ -45,3 +45,12 @@ class BookDownloadProvider(ABC):
     def get_info(self, url: str) -> BookSearchResult:
         """Busca informações básicas do livro (como título) a partir da URL"""
         pass
+class BookTextFormatter(ABC):
+    """
+    Interface/Contrato para formatadores e limpadores de texto.
+    Pode implementar limpeza via Regex, LLM ou heurísticas.
+    """
+    @abstractmethod
+    def format_text(self, raw_text: str, source: str, title: str = None, author: str = None) -> str:
+        """Retorna o texto (geralmente em formato JSON estruturado) pronto para consumo"""
+        pass

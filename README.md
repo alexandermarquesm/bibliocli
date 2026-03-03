@@ -1,15 +1,18 @@
 # 📚 BiblioCLI
 
-Uma ferramenta de linha de comando unificada para pesquisar e baixar livros de fontes públicas e gratuitas como **WikiSource**, **Project Gutenberg** e **Open Library**.
+Uma ferramenta poderosa e unificada para buscar, baixar e formatar livros de fontes públicas como **Project Gutenberg**, **Wikisource** e **Open Library**.
+
+Este projeto foi desenhado sob os princípios da **Clean Architecture**, servindo tanto como uma ferramenta CLI quanto como um **Motor de API** para motores de Text-to-Speech (como o [Flow-Read](https://github.com/alexandermarquesm/flow-read)).
 
 ---
 
 ## ✨ Funcionalidades
 
-- 🔍 **Busca Poderosa**: Pesquise por títulos de livros ou autores em múltiplas fontes simultaneamente.
-- 📥 **Download Direto**: Baixe e-books diretamente para sua máquina via URL.
-- 🎨 **Interface Rica**: Saída visualmente organizada e colorida no terminal usando a biblioteca `Rich`.
-- 🏗️ **Arquitetura Limpa**: Código estruturado seguindo princípios de Clean Architecture para fácil expansão.
+- 🔍 **Busca Multiprovedor**: Pesquise títulos ou autores simultaneamente em várias fontes bibliográficas.
+- 📥 **Download e Limpeza Inteligente**: Baixa e-books e usa **IA (OpenAI)** para remover metadados, prefácios e sumários, entregando apenas o conteúdo narrativo.
+- 🏗️ **Arquitetura Profissional**: Divisão clara entre Domínio, Aplicação e Infraestrutura.
+- 🌐 **Modo API**: Servidor FastAPI pronto para integração com frontends e outros backends.
+- 🎨 **Interface Rica**: Tabelas e logs coloridos no terminal via `Rich`.
 
 ---
 
@@ -18,67 +21,78 @@ Uma ferramenta de linha de comando unificada para pesquisar e baixar livros de f
 ### Pré-requisitos
 
 - **Python 3.12+**
-- **[uv](https://github.com/astral-sh/uv)** (gerenciador de pacotes rápido para Python)
+- **[uv](https://github.com/astral-sh/uv)** (Gerenciador de pacotes recomendado)
 
 ### Instalação
 
 1. Clone o repositório:
-
    ```bash
    git clone https://github.com/alexandermarquesm/bibliocli.git
    cd bibliocli
    ```
-
-2. Sincronize as dependências com `uv`:
+2. Instale as dependências:
    ```bash
    uv sync
    ```
 
 ---
 
-## 🛠️ Uso
+## 🛠️ Modos de Uso
 
-O BiblioCLI utiliza subcomandos para facilitar a interação.
+### 1. Interface de Linha de Comando (CLI)
 
-### 🔍 Buscar Livros ou Autores
+O projeto define um atalho via `pyproject.toml`.
 
-Para buscar por **autor**:
+- **Buscar Livros:**
+  ```bash
+  uv run bibliocli search "Dom Casmurro" --book
+  ```
+- **Baixar um Livro:**
+  ```bash
+  uv run bibliocli download "URL_DO_LIVRO" --name "nome.txt"
+  ```
 
-```bash
-uv run src/main.py search "Machado de Assis" --author
-```
+### 2. Modo API (Integração)
 
-Para buscar por **título de livro**:
-
-```bash
-uv run src/main.py search "Dom Casmurro" --book
-```
-
-### 📥 Baixar um E-book
-
-Utilize o comando `download` seguido da URL do livro:
+Inicia um servidor FastAPI pronto para ser consumido por aplicações como o Flow-Read.
 
 ```bash
-uv run src/main.py download "https://pt.wikisource.org/wiki/Dom_Casmurro" --name "dom_casmurro.txt"
+uv run bibliocli-server
 ```
 
-_Os livros são salvos na pasta `./ebooks/`._
+> [!NOTE]
+> Acesse `http://127.0.0.1:8000/docs` para ver a documentação interativa (Swagger).
 
 ---
 
-## 🧰 Tecnologias Utilizadas
+## 🧠 Inteligência de Formatação (OpenAI)
 
-- **Python 3.12**
-- **Requests**: Interação com APIs e download de conteúdo.
-- **Rich**: Formatação e tabelas impressionantes no terminal.
-- **Argparse**: Gerenciamento robusto de argumentos CLI.
+Para que a limpeza automática via IA funcione, defina sua chave da API:
+
+```bash
+export OPENAI_API_KEY="sua-chave-aqui"
+```
+
+Se a chave não for fornecida, o sistema usará uma limpeza básica via Regex (fallback).
+
+---
+
+## 🏛️ Estrutura do Projeto (Clean Architecture)
+
+- `src/domain`: Entidades de negócio independentes de frameworks.
+- `src/application`: Regras de aplicação e interfaces (Portas).
+- `src/infrastructure`: Implementações técnicas (Adaptadores):
+  - `cli/`: Interface de terminal.
+  - `web/`: Servidor de API e rotas.
+  - `services/`: Integrações externas (OpenAI).
+  - `providers/`: Adaptadores para fontes de livros.
 
 ---
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para detalhes.
+Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
 
 ---
 
-_Feito com ❤️ para amantes da literatura clássica._
+_Feito por [Alexander Marques](https://github.com/alexandermarquesm)_

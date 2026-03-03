@@ -19,6 +19,8 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
                 
                 key = item.get("key", "")
                 is_public = item.get("public_scan_b", False)
+                publish_year = item.get("first_publish_year")
+                year_str = str(publish_year) if publish_year else None
                 
                 # Simplificação: Tudo que não é explicitamente público é marcado como Requer Empréstimo
                 if is_public:
@@ -26,11 +28,16 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
                 else:
                     status = " [bold yellow](Requer Empréstimo 🔑)[/bold yellow]"
                 
+                authors = item.get("author_name", [])
+                author_name = authors[0] if authors else "Autor Desconhecido"
+                
                 results.append(BookSearchResult(
                     source="OpenLibrary",
                     title=f"{item.get('title', '')}{status}",
+                    author=author_name,
                     language=lang_str,
-                    link=f"https://openlibrary.org{key}"
+                    link=f"https://openlibrary.org{key}",
+                    year=year_str
                 ))
         except Exception:
             pass
@@ -46,17 +53,24 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
                 
                 key = item.get("key", "")
                 is_public = item.get("public_scan_b", False)
+                publish_year = item.get("first_publish_year")
+                year_str = str(publish_year) if publish_year else None
                 
                 if is_public:
                     status = " [bold green](Domínio Público ✓)[/bold green]"
                 else:
                     status = " [bold yellow](Requer Empréstimo 🔑)[/bold yellow]"
                 
+                authors = item.get("author_name", [])
+                author_name = authors[0] if authors else "Autor Desconhecido"
+
                 results.append(BookSearchResult(
                     source="OpenLibrary",
                     title=f"{item.get('title', '')}{status}",
+                    author=author_name,
                     language=lang_str,
-                    link=f"https://openlibrary.org{key}"
+                    link=f"https://openlibrary.org{key}",
+                    year=year_str
                 ))
         except Exception:
             pass
@@ -163,15 +177,29 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
             search_api = f"https://openlibrary.org/search.json?q=key:/{obj_type}/{olid}"
             r_s = requests.get(search_api).json()
             lang_str = "Desconhecido"
+            year_str = None
             if r_s.get("docs"):
-                langs = r_s["docs"][0].get("language", [])
+                doc = r_s["docs"][0]
+                langs = doc.get("language", [])
                 lang_str = ", ".join(langs[:3]) if langs else "Desconhecido"
+                publish_year = doc.get("first_publish_year")
+                year_str = str(publish_year) if publish_year else None
+
+            # Tentar pegar autor
+            author_name = "Autor Desconhecido"
+            if r.get("authors"):
+                author_key = r["authors"][0].get("author", {}).get("key")
+                if author_key:
+                    author_r = requests.get(f"https://openlibrary.org{author_key}.json").json()
+                    author_name = author_r.get("name", "Autor Desconhecido")
 
             return BookSearchResult(
                 source="OpenLibrary",
                 title=title,
+                author=author_name,
                 language=lang_str, 
-                link=url
+                link=url,
+                year=year_str
             )
         except Exception:
             return None
