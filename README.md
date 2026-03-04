@@ -1,8 +1,10 @@
 # 📚 BiblioCLI
 
+![BiblioCLI Web HUD Preview](docs/images/bibliocli-preview.png)
+
 Uma ferramenta poderosa e unificada para buscar, baixar e formatar livros de fontes públicas como **Project Gutenberg**, **Wikisource** e **Open Library**.
 
-Este projeto foi desenhado sob os princípios da **Clean Architecture**, servindo tanto como uma ferramenta CLI quanto como um **Motor de API** para motores de Text-to-Speech (como o [Flow-Read](https://github.com/alexandermarquesm/flow-read)).
+Este projeto foi desenhado sob os princípios da **Clean Architecture**, servindo tanto como uma ferramenta CLI de alta performance quanto como um **Nexo Digital** via Web HUD com estética Cyberpunk.
 
 ---
 
@@ -10,18 +12,23 @@ Este projeto foi desenhado sob os princípios da **Clean Architecture**, servind
 
 - 🔍 **Busca Multiprovedor**: Pesquise títulos ou autores simultaneamente em várias fontes bibliográficas.
 - 📥 **Download e Limpeza Inteligente**: Baixa e-books e usa **IA (OpenAI)** para remover metadados, prefácios e sumários, entregando apenas o conteúdo narrativo.
-- 🏗️ **Arquitetura Profissional**: Divisão clara entre Domínio, Aplicação e Infraestrutura.
-- 🌐 **Modo API**: Servidor FastAPI pronto para integração com frontends e outros backends.
-- 🎨 **Interface Rica**: Tabelas e logs coloridos no terminal via `Rich`.
+- 🏗️ **Arquitetura Profissional**: Divisão clara entre Domínio, Aplicação e Infraestrutura, garantindo manutenibilidade e testabilidade.
+- 🌐 **Nexus Web HUD**: Interface web moderna com estética Cyberpunk, efeitos de _glitch_ de alta fidelidade e design responsivo.
+- 🎨 **Terminal Rico**: Tabelas, barras de progresso e logs coloridos no terminal via `Rich`.
+
+---
+
+## 🛠️ Stack Tecnológica
+
+- **Core**: Python 3.12+ & [uv](https://github.com/astral-sh/uv)
+- **API**: FastAPI & Uvicorn
+- **UI Terminal**: Rich & Typer
+- **UI Web**: Vanilla JS (ES6+), CSS3 (Cyberpunk Design System)
+- **IA**: OpenAI API (GPT-4o/o1)
 
 ---
 
 ## 🚀 Como Começar
-
-### Pré-requisitos
-
-- **Python 3.12+**
-- **[uv](https://github.com/astral-sh/uv)** (Gerenciador de pacotes recomendado)
 
 ### Instalação
 
@@ -30,18 +37,28 @@ Este projeto foi desenhado sob os princípios da **Clean Architecture**, servind
    git clone https://github.com/alexandermarquesm/bibliocli.git
    cd bibliocli
    ```
-2. Instale as dependências:
+2. Instale as dependências com `uv`:
    ```bash
    uv sync
    ```
 
+### Configuração de IA (Opcional)
+
+Para a limpeza automática via IA, defina sua chave da API:
+
+```bash
+export OPENAI_API_KEY="sua-chave-aqui"
+```
+
+_Se a chave não for fornecida, o sistema usará um motor de limpeza baseado em Regex como fallback._
+
 ---
 
-## 🛠️ Modos de Uso
+## 🕹️ Modos de Uso
 
 ### 1. Interface de Linha de Comando (CLI)
 
-O projeto define um atalho via `pyproject.toml`.
+O projeto define atalhos otimizados via `pyproject.toml`.
 
 - **Buscar Livros:**
   ```bash
@@ -52,40 +69,45 @@ O projeto define um atalho via `pyproject.toml`.
   uv run bibliocli download "URL_DO_LIVRO" --name "nome.txt"
   ```
 
-### 2. Modo API (Integração)
+### 2. Nexus Web HUD (Interface Moderna)
 
-Inicia um servidor FastAPI pronto para ser consumido por aplicações como o Flow-Read.
+Inicia o centro de comando digital com fatiamento de interface e estética retro-futurista.
 
 ```bash
 uv run bibliocli-server
 ```
 
-> [!NOTE]
-> Acesse `http://127.0.0.1:8000/docs` para ver a documentação interativa (Swagger).
+> [!TIP]
+> Com o servidor rodando, acesse `http://127.0.0.1:8000` para a interface gráfica ou `/docs` para a documentação Swagger.
 
 ---
 
-## 🧠 Inteligência de Formatação (OpenAI)
+## 🏛️ Clean Architecture (A Anatomia do Projeto)
 
-Para que a limpeza automática via IA funcione, defina sua chave da API:
+O BiblioCLI segue rigorosamente a separação de responsabilidades:
 
-```bash
-export OPENAI_API_KEY="sua-chave-aqui"
+```mermaid
+graph TD
+    subgraph Infrastructure
+        CLI[CLI Driver]
+        WEB[FastAPI Server]
+        API_CL[OpenAI Client]
+    end
+    subgraph Application
+        UC[Use Cases]
+        PORT[Repository Interfaces]
+    end
+    subgraph Domain
+        ENT[Book Entities]
+        VAL[Value Objects]
+    end
+
+    CLI --> UC
+    WEB --> UC
+    UC --> ENT
+    UC --> PORT
+    Infrastructure -.-> PORT
 ```
-
-Se a chave não for fornecida, o sistema usará uma limpeza básica via Regex (fallback).
-
----
-
-## 🏛️ Estrutura do Projeto (Clean Architecture)
-
-- `src/domain`: Entidades de negócio independentes de frameworks.
-- `src/application`: Regras de aplicação e interfaces (Portas).
-- `src/infrastructure`: Implementações técnicas (Adaptadores):
-  - `cli/`: Interface de terminal.
-  - `web/`: Servidor de API e rotas.
-  - `services/`: Integrações externas (OpenAI).
-  - `providers/`: Adaptadores para fontes de livros.
 
 ---
 
@@ -95,4 +117,4 @@ Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
 
 ---
 
-_Feito por [Alexander Marques](https://github.com/alexandermarquesm)_
+_Feito com ⚡ por [Alexander Marques](https://github.com/alexandermarquesm)_
