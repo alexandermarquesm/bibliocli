@@ -1,0 +1,135 @@
+/* Component: Book Cards & Results Grid */
+.grid-quantum {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 3rem;
+}
+
+.card-nexus {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 2.5rem;
+  position: relative;
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  clip-path: polygon(0 0, 90% 0, 100% 10%, 100% 100%, 10% 100%, 0 90%);
+}
+
+.card-nexus:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--neon-cyan);
+  transform: translateY(-5px);
+  box-shadow: 0 0 40px rgba(0, 242, 254, 0.1);
+}
+
+.card-source {
+  font-family: var(--font-hdr);
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  color: var(--neon-magenta);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-source::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--neon-magenta);
+  box-shadow: 0 0 10px var(--neon-magenta);
+  border-radius: 50%;
+}
+
+.card-title {
+  font-family: var(--font-hdr);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 2rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-meta {
+  margin-top: auto;
+  border-top: 1px solid var(--glass-border);
+  padding-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+}
+
+.meta-quantum {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.meta-quantum strong {
+  color: var(--text-primary);
+}
+
+/* Actions inside cards */
+.btn-core {
+  width: 100%;
+  padding: 1.2rem;
+  background: transparent;
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-family: var(--font-hdr);
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  clip-path: polygon(5% 0, 100% 0, 100% 80%, 95% 100%, 0 100%, 0 20%);
+}
+
+.btn-core:hover {
+  background: var(--neon-cyan);
+  color: #000;
+  box-shadow: 0 0 20px var(--neon-cyan);
+}
+
+.btn-aux {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-aux:hover {
+  color: var(--neon-magenta);
+}
+
+/* Provider Color Specifics */
+.card-nexus.gutenberg .card-source {
+  color: var(--neon-cyan);
+}
+.card-nexus.gutenberg .card-source::before {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+.card-nexus.openlibrary .card-source {
+  color: var(--neon-magenta);
+}
+.card-nexus.wikisource .card-source {
+  color: var(--neon-green);
+}
+.card-nexus.wikisource .card-source::before {
+  background: var(--neon-green);
+  box-shadow: 0 0 10px var(--neon-green);
+}

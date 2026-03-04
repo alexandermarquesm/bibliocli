@@ -1,0 +1,27 @@
+/* Component: Status Feedback (Loader/Empty State) */
+.quantum-loader {
+  display: none;
+  text-align: center;
+  padding: 5rem;
+}
+
+.nexus-loader {
+  width: 50px;
+  height: 50px;
+  border: 2px solid var(--neon-cyan);
+  border-top-color: transparent;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: spin 0.8s infinite linear;
+  box-shadow: 0 0 15px var(--neon-cyan);
+}
+
+.empty-nexus {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 10rem 0;
+  font-family: var(--font-hdr);
+  color: var(--text-muted);
+  opacity: 0.5;
+  letter-spacing: 4px;
+}

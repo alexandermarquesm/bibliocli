@@ -1,0 +1,12 @@
+:root {
+  --neon-cyan: #00f2fe;
+  --neon-magenta: #ff00ff;
+  --neon-green: #39ff14;
+  --bg-deep: #03040b;
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --font-main: "Exo 2", sans-serif;
+  --font-hdr: "Orbitron", sans-serif;
+}

@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import os
 import secrets
 import json
@@ -12,17 +12,29 @@ router = APIRouter(prefix="/books", tags=["Books"])
 class BookSearchResultDTO(BaseModel):
     source: str
     title: str
+    author: Optional[str] = None
     language: str
     link: str
+    year: Optional[str] = None
 
 @router.get("/search", response_model=List[BookSearchResultDTO])
 def search_books(
     query: str, 
     search_type: str = "book",
+    provider_name: str = "all",
     providers = Depends(get_providers)
 ):
     results = []
-    for provider in providers:
+    
+    # Filter providers if a specific one is requested
+    active_providers = providers
+    if provider_name.lower() != "all":
+        active_providers = [
+            p for p in providers 
+            if provider_name.lower() in p.__class__.__name__.lower()
+        ]
+
+    for provider in active_providers:
         try:
              if search_type == "author":
                  provider_results = provider.search_by_author(query)
@@ -33,13 +45,16 @@ def search_books(
                  results.append(BookSearchResultDTO(
                      source=res.source,
                      title=res.title,
+                     author=res.author,
                      language=res.language,
-                     link=res.link
+                     link=res.link,
+                     year=res.year
                  ))
         except Exception as e:
             print(f"Erro ao pesquisar em {provider.__class__.__name__}: {e}")
             
     return results
+
 
 @router.get("/download")
 def download_and_format_book(
@@ -104,6 +119,40 @@ def download_and_format_book(
             "formatted_content": formatted_data
         }
         
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+@router.get("/download_raw")
+def download_raw_book(
+    url: str,
+    providers = Depends(get_providers)
+):
+    provider = next((p for p in providers if hasattr(p, 'can_download') and p.can_download(url)), None)
+    
+    if not provider:
+         raise HTTPException(status_code=400, detail="Nenhum provedor suporta o download desta URL.")
+    
+    tmp_path = f"/tmp/raw_{secrets.token_hex(4)}.txt"
+    try:
+        success = provider.download(url, tmp_path)
+        if not success:
+            raise HTTPException(status_code=500, detail="Falha ao baixar texto do provedor.")
+        
+        book_info = provider.get_info(url)
+        # Sanitizar nome do arquivo
+        title_safe = "".join([c for c in book_info.title if c.isalnum() or c in (' ', '-', '_')]).strip()
+        filename = f"{title_safe}.txt"
+
+        with open(tmp_path, "rb") as f:
+            content = f.read()
+
+        return Response(
+            content=content,
+            media_type="text/plain",
+            headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
+        )
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
