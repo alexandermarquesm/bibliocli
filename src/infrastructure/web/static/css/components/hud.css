@@ -1,0 +1,218 @@
+/* Component: HUD Elements */
+.hud-search {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 2rem;
+  border-radius: 4px;
+  backdrop-filter: blur(20px);
+  margin-bottom: 5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  clip-path: polygon(0 0, 100% 0, 100% 90%, 95% 100%, 0 100%);
+}
+
+.search-type-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.input-hud-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.input-hud-group input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glass-border);
+  padding: 0 1.2rem;
+  height: 56px;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.input-hud-group input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+}
+
+.search-hud-btn {
+  background: transparent; /* A base fica transparente pois as fatias serão o botão */
+  color: #000;
+  border: none;
+  padding: 0 40px;
+  height: 56px;
+  width: 180px;
+  font-family: var(--font-hdr);
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+/* Esconde o texto base, mantendo apenas as fatias visíveis */
+.btn-base-text {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.btn-glitch-strip {
+  overflow: hidden;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  top: var(--top);
+  height: var(--h);
+
+  /* Variáveis do Glitch adaptadas do CodePen */
+  --glitch-x-1: var(--x1);
+  --glitch-x-2: var(--x2);
+  --glitch-hue-1: var(--hue1);
+  --glitch-hue-2: var(--hue2);
+
+  /* Reset State */
+  transform: translateX(0);
+  filter: hue-rotate(0) drop-shadow(0 0 0 transparent);
+  transition:
+    transform 0.3s ease,
+    filter 0.3s ease;
+  image-rendering: crisp-edges;
+}
+
+.search-hud-btn:hover .btn-glitch-strip {
+  animation-name: var(--name);
+  animation-duration: 4s;
+  animation-delay: var(--delay);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-timing-function: linear;
+  animation-play-state: running; /* Ativa no hover */
+}
+
+.strip-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 56px; /* Altura total do botão original */
+  background: var(--neon-cyan);
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  letter-spacing: 2px;
+  font-size: 0.8rem;
+
+  /* Deslocamento vertical para mostrar apenas a fatia correta */
+  transform: translateY(calc(var(--top) * -1));
+
+  /* Mantém o formato geométrico original */
+  clip-path: polygon(15% 0, 100% 0, 100% 75%, 85% 100%, 0 100%, 0 25%);
+}
+
+.search-hud-btn:hover {
+  filter: brightness(1.1);
+}
+
+.search-hud-btn:hover .btn-glitch-strip {
+  animation-name: var(--name);
+  animation-duration: 4s;
+  animation-delay: var(--delay);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-timing-function: linear;
+}
+
+.search-hud-btn:active {
+  transform: translateY(2px);
+}
+
+.search-hud-btn:active {
+  transform: translateY(2px) scale(0.98);
+}
+
+/* Filters & Providers */
+.hud-filter-toggle {
+  background: rgba(0, 242, 254, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  font-family: var(--font-hdr);
+  font-size: 0.6rem;
+  padding: 5px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  outline: none;
+}
+
+.hud-filter-toggle:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+.hud-filter-toggle .current-val {
+  color: var(--neon-cyan);
+  font-weight: 700;
+}
+
+.search-provider-hud {
+  display: none;
+  gap: 1rem;
+  margin-top: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-left: 2px solid var(--neon-cyan);
+  animation: terminal-expand 0.4s ease forwards;
+}
+
+.search-provider-hud.visible {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.hud-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-hdr);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  letter-spacing: 1px;
+  padding: 0.4rem 0.8rem;
+}
+
+.hud-btn.active {
+  color: var(--neon-cyan);
+  background: rgba(0, 242, 254, 0.05);
+}
+
+.hud-btn.active::before {
+  content: "[";
+  position: absolute;
+  left: -2px;
+  color: var(--neon-cyan);
+}
+.hud-btn.active::after {
+  content: "]";
+  position: absolute;
+  right: -2px;
+  color: var(--neon-cyan);
+}
