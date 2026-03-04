@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 
-from src.application.use_cases import SearchBooksUseCase, SearchBooksByAuthorUseCase
+from src.presentation.controllers.book_controller import BookController
 from src.application.download_use_cases import DownloadBookUseCase
 
 from src.infrastructure.providers.wikisource_provider import WikisourceProvider
@@ -47,14 +47,13 @@ def run_cli():
             cli.show_usage_hint()
             return
 
-        if args.author:
-            use_case = SearchBooksByAuthorUseCase(providers=providers)
-            with cli.console.status(f"[bold green]Procurando por autor '{args.termo}'...[/bold green]"):
-                resultados = use_case.execute(args.termo)
-        else:
-            use_case = SearchBooksUseCase(providers=providers)
-            with cli.console.status(f"[bold green]Procurando pelo livro '{args.termo}'...[/bold green]"):
-                resultados = use_case.execute(args.termo)
+        controller = BookController(providers)
+        search_type = "author" if args.author else "book"
+        status_msg = f"[bold green]Procurando por {search_type} '{args.termo}'...[/bold green]"
+        
+        with cli.console.status(status_msg):
+            resultados = controller.get_search_results(args.termo, search_type=search_type)
+            
         cli.print_results(args.termo, resultados)
 
     elif args.command == "download":
@@ -142,14 +141,11 @@ def run_interactive_mode(cli):
                 if not termo:
                     continue
                 
-                if tipo == "autor":
-                    use_case = SearchBooksByAuthorUseCase(providers=providers)
-                    with cli.console.status(f"[bold green]Procurando por autor '{termo}' no Project Gutenberg...[/bold green]"):
-                        resultados = use_case.execute(termo)
-                else:
-                    use_case = SearchBooksUseCase(providers=providers)
-                    with cli.console.status(f"[bold green]Procurando pelo livro '{termo}' no Project Gutenberg...[/bold green]"):
-                        resultados = use_case.execute(termo)
+                controller = BookController(providers)
+                status_msg = f"[bold green]Procurando por {tipo} '{termo}'...[/bold green]"
+                
+                with cli.console.status(status_msg):
+                    resultados = controller.get_search_results(termo, search_type="author" if tipo == "autor" else "book")
                         
                 cli.print_results(termo, resultados)
                 
