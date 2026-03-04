@@ -1,16 +1,16 @@
 from dataclasses import dataclass
 from typing import Optional
+from .value_objects import BookSource, BookLink
 
 @dataclass
 class BookSearchResult:
     """
     Entidade de Domínio principal.
-    Não conhece nada sobre bibliotecas externas como Requests ou Rich.
-    Apenas reflete o modelo de dados puro que o nosso sistema entende por 'Resultado de Busca'.
+    Utiliza Value Objects para garantir integridade dos dados sem depender de frameworks.
     """
-    source: str
+    source: BookSource
     title: str
     author: str
     language: str
-    link: str
+    link: BookLink
     year: Optional[str] = None
