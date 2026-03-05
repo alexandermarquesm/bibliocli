@@ -1,143 +1,97 @@
+
 import os
 import re
 import json
 from typing import List, Optional
-from pydantic import BaseModel
 from openai import OpenAI
 from src.application.interfaces import BookTextFormatter
-
-class Chapter(BaseModel):
-    title: str
-    paragraphs: List[str]
-    
-class FormattedBook(BaseModel):
-    title: str
-    author: str
-    chapters: List[Chapter]
+from src.domain.models.book_models import Chapter, FormattedBook
+from src.infrastructure.services.book_parser import BookParser
+from src.infrastructure.services.openai_toc_refiner import OpenAITocRefiner
 
 class OpenAITextFormatter(BookTextFormatter):
+    """
+    Formatador de texto que combina limpeza bruta com uma estrutura de capítulos 
+    detectada pelo BookParser e REFINADA por IA.
+    """
+
     def __init__(self):
         self.api_key = os.environ.get("OPENAI_API_KEY")
         if self.api_key:
             self.client = OpenAI(api_key=self.api_key)
         else:
             self.client = None
+        self.parser = BookParser()
+        self.refiner = OpenAITocRefiner(api_key=self.api_key)
 
     def _apply_raw_cleaning_gutenberg(self, raw_text: str) -> str:
+        """Remove headers e footers específicos do Project Gutenberg."""
         start_match = re.search(r'\*\*\* START OF [^\*]*\*\*\*', raw_text)
         end_match = re.search(r'\*\*\* END OF [^\*]*\*\*\*', raw_text)
 
         if start_match:
-            start_idx = start_match.end()
-            end_idx = end_match.start() if end_match else len(raw_text)
-            return raw_text[start_idx:end_idx].strip()
+            raw_text = raw_text[start_match.end():]
+        if end_match:
+            raw_text = raw_text[:end_match.start()]
         
         return raw_text.strip()
 
-    def _split_into_paragraphs(self, text: str) -> List[str]:
-        # Divide por uma ou mais linhas em branco
-        paragraphs = re.split(r'\n\s*\n', text)
-        # Limpa espaços e remove parágrafos vazios
-        return [p.strip() for p in paragraphs if p.strip()]
+    def format_text(self, raw_text: str, source: str = "gutenberg", title: str = None, author: str = None) -> str:
+        """
+        Ponto de entrada principal para formatar o livro.
+        1. Limpa o texto bruto.
+        2. Analisa a estrutura de capítulos via modular parser.
+        3. Define o ponto de início sugerido.
+        """
+        # 1. Limpeza
+        if source and "Gutenberg" in source:
+            text = self._apply_raw_cleaning_gutenberg(raw_text)
+        else:
+            text = raw_text.strip()
 
-    def _detect_chapters(self, text: str) -> List[Chapter]:
-        """
-        Heurística simples para detectar capítulos:
-        Procure por 'CAPÍTULO', 'CHAPTER', 'CENA', ou números romanos sozinhos em uma linha.
-        """
-        # Padrões comuns de início de capítulo
-        patterns = [
-            r'^(CAPÍTULO\s+[IVXLCDM\d]+.*)$',
-            r'^(CHAPTER\s+[IVXLCDM\d]+.*)$',
-            r'^([IVXLCDM]{1,7}\.*)$', # Números romanos isolados
-            r'^(CENA\s+[IVXLCDM\d]+.*)$'
-        ]
-        
+        # 2. Parsing Modular da Estrutura (Raw)
         lines = text.split('\n')
-        chapters_data = []
-        current_chapter_title = "Início"
-        current_chapter_lines = []
-
-        for line in lines:
-            stripped = line.strip()
-            is_header = False
-            for p in patterns:
-                if re.match(p, stripped, re.IGNORECASE):
-                    # Se temos conteúdo acumulado, salve o capítulo anterior
-                    if current_chapter_lines:
-                        content = "\n".join(current_chapter_lines)
-                        chapters_data.append(Chapter(
-                            title=current_chapter_title,
-                            paragraphs=self._split_into_paragraphs(content)
-                        ))
-                    
-                    current_chapter_title = stripped
-                    current_chapter_lines = []
-                    is_header = True
-                    break
+        raw_headers = self.parser.get_raw_headers(lines)
+        
+        # 3. Refinamento por IA (O Cérebro)
+        # Identifica segmentos prováveis de sumário para enviar apenas eles (Economia de Tokens)
+        segments = self.parser.find_toc_segments(lines)
+        toc_segment_text = segments[0]['text'] if segments else text[:3000] # Fallback se não detectar nada
+        
+        ai_toc = self.refiner.refine_toc(raw_headers, text[:3000])
+        
+        # 4. Extração Final de Capítulos
+        # Se a IA retornou índices, usamos eles. Caso contrário, fallback heurístico.
+        if ai_toc.get("toc_indices"):
+            trusted_titles = set()
+            for idx in ai_toc["toc_indices"]:
+                if 0 <= idx < len(raw_headers):
+                    title_raw = raw_headers[idx]['title']
+                    trusted_titles.add(self.parser._clean_title(title_raw))
             
-            if not is_header:
-                current_chapter_lines.append(line)
+            toc_end_line = ai_toc.get("start_line", 0)
+        else:
+            trusted_titles, toc_end_line = self.parser.extract_toc_titles(lines)
 
-        # Adiciona o último capítulo
-        if current_chapter_lines:
-            content = "\n".join(current_chapter_lines)
-            chapters_data.append(Chapter(
-                title=current_chapter_title,
-                paragraphs=self._split_into_paragraphs(content)
-            ))
-
-        return chapters_data
-
-    def format_text(self, raw_text: str, source: str, title: str = None, author: str = None) -> str:
-        cleaned_text = raw_text
+        chapters = self.parser.parse_chapters(text, trusted_titles=trusted_titles, toc_end_line=toc_end_line)
         
-        # 1. Limpeza básica Regex (Gutenberg)
-        if "gutenberg" in source.lower():
-            cleaned_text = self._apply_raw_cleaning_gutenberg(raw_text)
-
-        # 2. Uso Inteligente de IA (Apenas no início para remover prefácios e lixo)
-        if self.client and len(cleaned_text) > 1000:
-            try:
-                # Enviar apenas os primeiros 15k caracteres para limpeza de cabeçalho
-                head_limit = 15000
-                head_chunk = cleaned_text[:head_limit]
-                remaining_text = cleaned_text[head_limit:]
-                
-                prompt = (
-                    "Você é um assistente especializado em limpar e-books para motores de Voz (TTS). "
-                    "Vou te mandar o INÍCIO de um livro. Sua tarefa é remover TUDO o que não faz parte da história real. "
-                    "Remova: Folhas de rosto, dedicatórias, índices, prefácios de tradutores e notas de copyright. "
-                    "Mantenha APENAS o texto literário a partir de onde o livro realmente começa. "
-                    "Retorne o texto limpo exatamente como escrito, sem comentários."
-                )
-                
-                response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": head_chunk}
-                    ],
-                    temperature=0
-                )
-                
-                llm_cleaned_head = response.choices[0].message.content.strip()
-                cleaned_text = llm_cleaned_head + "\n\n" + remaining_text
-            except Exception as e:
-                print(f"Aviso: Erro na limpeza via IA, usando limpeza básica: {e}")
-
-        # 3. Heurística de Capítulos e Parágrafos
-        chapters = self._detect_chapters(cleaned_text)
+        # 5. Lógica de Sugestão de Início (Suggest Start)
+        suggested_start = {"chapter_index": 0, "paragraph_index": 0}
         
-        # Se não detectou nada, cria um capítulo único
-        if not chapters:
-            chapters = [Chapter(
-                title="Conteúdo Completo",
-                paragraphs=self._split_into_paragraphs(cleaned_text)
-            )]
-
-        return FormattedBook(
+        # Tenta achar pelo índice do item que a IA identificou como início
+        start_item_idx = ai_toc.get("start_item_index")
+        if start_item_idx is not None and 0 <= start_item_idx < len(raw_headers):
+            target_title = self.parser._clean_title(raw_headers[start_item_idx]['title'])
+            for idx, ch in enumerate(chapters):
+                if self.parser._clean_title(ch.title) == target_title:
+                    suggested_start = {"chapter_index": idx, "paragraph_index": 0}
+                    break
+        
+        book_data = FormattedBook(
             title=title or "Título Desconhecido",
             author=author or "Autor Desconhecido",
-            chapters=chapters
-        ).model_dump_json()
+            chapters=chapters,
+            suggested_start=suggested_start
+        )
+
+        return json.dumps(book_data.model_dump(), indent=2, ensure_ascii=False)
