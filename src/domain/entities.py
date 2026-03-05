@@ -14,3 +14,4 @@ class BookSearchResult:
     language: str
     link: BookLink
     year: Optional[str] = None
+    cover_url: Optional[str] = None
