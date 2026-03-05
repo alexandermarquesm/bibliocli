@@ -47,37 +47,84 @@ class BookController:
         import os
         import json
         
+        from src.infrastructure.services.book_repository import BookRepository
+        repo = BookRepository()
         tmp_path = f"/tmp/bibliocli_temp_{secrets.token_hex(4)}.txt"
-        
+
         try:
-            success = provider.download(url, tmp_path)
-            if not success:
-                return None, "Falha ao baixar texto bruto do provedor."
-                
-            with open(tmp_path, "r", encoding="utf-8", errors="ignore") as f:
-                raw_text = f.read()
-                
             book_info = provider.get_info(url)
+            author = book_info.author if book_info else "Autor Desconhecido"
+            title = book_info.title if book_info else "Título Desconhecido"
             
-            formatted_json_string = formatting_agent.format_text(
-                raw_text, 
-                provider.__class__.__name__,
-                title=book_info.title if book_info else "Título Desconhecido",
-                author=book_info.author if book_info else "Autor Desconhecido"
-            )
+            # --- Lógica de Cache (Clean Architecture) ---
+            # 1. Tentar carregar pela URL (Identificador Único)
+            formatted_data = repo.find_by_url(url)
             
-            formatted_data = json.loads(formatted_json_string)
+            if formatted_data:
+                print(f"📦 [CACHE URL] Livro encontrado no cache local via URL: {url}")
             
-            # Application Logic (Optimization)
+            # 2. Tentar carregar pelo Autor/Título como fallback
+            if not formatted_data:
+                formatted_data = repo.find_formatted(author, title)
+                if formatted_data:
+                    print(f"📦 [CACHE META] Livro encontrado no cache local via Autor/Título: {author} - {title}")
+            
+            if not formatted_data:
+                print(f"🌐 [NEW BOOK] Livro não encontrado. Iniciando Download e Processamento IA...")
+                # 2. Se não existir, Baixar e Formatar
+                success = provider.download(url, tmp_path)
+                if not success:
+                    return None, "Falha ao baixar texto bruto do provedor."
+                    
+                with open(tmp_path, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_text = f.read()
+                
+                # Formatação Completa (incluindo IA)
+                formatted_json_string = formatting_agent.format_text(
+                    raw_text, 
+                    provider.__class__.__name__,
+                    title=title,
+                    author=author
+                )
+                
+                # Converter para Modelo Pydantic para validar e salvar
+                from src.domain.models.book_models import FormattedBook
+                book_dict = json.loads(formatted_json_string)
+                book_dict["source_url"] = url # << Identificador
+                book_obj = FormattedBook(**book_dict)
+                
+                # Salvar no Disco para uso futuro (Mestre)
+                repo.save(book_obj)
+                print(f"💾 [SAVED] Livro processado e salvo em: ebooks/{author}/{title}.json")
+                
+                formatted_data = book_obj.model_dump()
+            
+            from src.application.use_cases import GetBookMetadataUseCase, GetBookChapterUseCase
+            from src.infrastructure.services.book_parser import BookParser
+            
+            # --- Lógica de Otimização (Lazy Loading para entrega API) ---
             chapter_index = options.get("chapter_index")
-            if "chapters" in formatted_data and chapter_index is not None:
+            only_metadata = options.get("only_metadata", False)
+            
+            # Nota: O texto bruto ainda é necessário para o chapter_uc se não tivermos parágrafos no JSON
+            # Mas como o JSON mestre já tem tudo, podemos filtrar direto dele.
+            
+            if only_metadata:
+                # Remove os parágrafos para não pesar a resposta da rede
+                for ch in formatted_data.get("chapters", []):
+                    ch["paragraphs"] = []
+            
+            elif chapter_index is not None:
                 if 0 <= chapter_index < len(formatted_data["chapters"]):
-                    formatted_data["chapters"] = [formatted_data["chapters"][chapter_index]]
+                    ch = formatted_data["chapters"][chapter_index]
+                    formatted_data["chapters"] = [ch]
                 else:
                     return None, "Índice de capítulo fora do intervalo."
             
             return {
                 "book_url": url,
+                "cover_url": book_info.cover_url if book_info else None,
+                "year": book_info.year if book_info else None,
                 "formatted_content": formatted_data
             }, None
             

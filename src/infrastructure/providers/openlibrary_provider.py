@@ -31,13 +31,17 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
                 authors = item.get("author_name", [])
                 author_name = authors[0] if authors else "Autor Desconhecido"
                 
+                cover_id = item.get("cover_i")
+                cover_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg" if cover_id else None
+
                 results.append(BookSearchResult(
                     source="OpenLibrary",
                     title=f"{item.get('title', '')}{status}",
                     author=author_name,
                     language=lang_str,
                     link=f"https://openlibrary.org{key}",
-                    year=year_str
+                    year=year_str,
+                    cover_url=cover_url
                 ))
         except Exception:
             pass
@@ -64,13 +68,17 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
                 authors = item.get("author_name", [])
                 author_name = authors[0] if authors else "Autor Desconhecido"
 
+                cover_id = item.get("cover_i")
+                cover_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg" if cover_id else None
+
                 results.append(BookSearchResult(
                     source="OpenLibrary",
                     title=f"{item.get('title', '')}{status}",
                     author=author_name,
                     language=lang_str,
                     link=f"https://openlibrary.org{key}",
-                    year=year_str
+                    year=year_str,
+                    cover_url=cover_url
                 ))
         except Exception:
             pass
@@ -193,13 +201,22 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
                     author_r = requests.get(f"https://openlibrary.org{author_key}.json").json()
                     author_name = author_r.get("name", "Autor Desconhecido")
 
+            cover_id = r.get("covers", [None])[0]
+            cover_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg" if cover_id else None
+            
+            if not cover_url and r_s.get("docs"):
+                cover_id_s = r_s["docs"][0].get("cover_i")
+                if cover_id_s:
+                    cover_url = f"https://covers.openlibrary.org/b/id/{cover_id_s}-M.jpg"
+
             return BookSearchResult(
                 source="OpenLibrary",
                 title=title,
                 author=author_name,
                 language=lang_str, 
                 link=url,
-                year=year_str
+                year=year_str,
+                cover_url=cover_url
             )
         except Exception:
             return None

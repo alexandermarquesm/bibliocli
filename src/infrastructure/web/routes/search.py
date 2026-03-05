@@ -13,6 +13,7 @@ class BookSearchResultDTO(BaseModel):
     language: str
     link: str
     year: Optional[str] = None
+    cover_url: Optional[str] = None
 
 @router.get("/search", response_model=List[BookSearchResultDTO])
 def search_books(
