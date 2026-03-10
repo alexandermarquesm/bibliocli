@@ -17,6 +17,8 @@ class BookParser:
         r'CHAPTER\s+[IVXLCDM\d]+',
         r'CAPÍTULO\s+[IVXLCDM\d]+',
         r'CANTO\s+[IVXLCDM\d]+',
+        r'LETTER\s+[IVXLCDM\d]+',
+        r'CARTA\s+[IVXLCDM\d]+',
         r'HELL',
         r'PURGATORY',
         r'PARADISE',
@@ -188,7 +190,7 @@ class BookParser:
         segments = []
         for cluster in clusters:
             start_line = max(0, cluster[0]['line'] - 2)
-            end_line = cluster[-1]['line'] # Fim exato no último título do sumário
+            end_line = cluster[-1]['line'] + 1 # Fim exato após o último título do sumário
             
             # Tenta encontrar um marcador de início de sumário (ex: "CONTENTS")
             for j in range(cluster[0]['line'], max(0, cluster[0]['line'] - 20), -1):
