@@ -69,7 +69,12 @@ class OpenAITextFormatter(BookTextFormatter):
                     title_raw = raw_headers[idx]['title']
                     trusted_titles.add(self.parser._clean_title(title_raw))
             
-            toc_end_line = ai_toc.get("start_line", 0)
+            toc_end_line = 0
+            start_item_idx = ai_toc.get("start_item_index")
+            if start_item_idx is not None and 0 <= start_item_idx < len(raw_headers):
+                toc_end_line = raw_headers[start_item_idx]['line']
+            elif "start_line" in ai_toc:
+                toc_end_line = ai_toc["start_line"]
         else:
             trusted_titles, toc_end_line = self.parser.extract_toc_titles(lines)
 
