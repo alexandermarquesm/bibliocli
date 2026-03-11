@@ -25,3 +25,12 @@ def search_books(
     controller = BookController(providers)
     results = controller.get_search_results(query, search_type, provider_name)
     return results
+
+@router.get("/popular", response_model=List[BookSearchResultDTO])
+def get_popular_books(
+    provider_name: str = "all",
+    providers = Depends(get_providers)
+):
+    controller = BookController(providers)
+    results = controller.get_popular_books(provider_name)
+    return results

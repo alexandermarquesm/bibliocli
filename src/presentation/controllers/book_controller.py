@@ -1,5 +1,5 @@
 from typing import List, Optional
-from src.application.use_cases import SearchBooksUseCase, SearchBooksByAuthorUseCase
+from src.application.use_cases import SearchBooksUseCase, SearchBooksByAuthorUseCase, GetPopularBooksUseCase
 from src.domain.value_objects import BookSource, BookLink
 
 class BookController:
@@ -30,6 +30,22 @@ class BookController:
 
         # 3. Return Entities (Presentation Logic)
         # The caller (Web or CLI) will handle specific formatting/DTO mapping.
+        return domain_results
+
+    def get_popular_books(self, provider_name: str = "all"):
+        # 1. Filter Providers
+        active_providers = self.providers
+        if provider_name.lower() != "all":
+            active_providers = [
+                p for p in self.providers 
+                if provider_name.lower() in p.__class__.__name__.lower()
+            ]
+
+        # 2. Select and Execute Use Case
+        use_case = GetPopularBooksUseCase(providers=active_providers)
+        domain_results = use_case.execute()
+
+        # 3. Return Entities
         return domain_results
 
     def get_formatted_book(self, url: str, formatting_agent, options: dict):

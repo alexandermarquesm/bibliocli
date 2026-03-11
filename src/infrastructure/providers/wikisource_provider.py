@@ -69,6 +69,10 @@ class WikisourceProvider(BookSearchProvider, BookDownloadProvider):
         """No Wikisource a busca textual já funciona para cruzar nomes de autores com obras."""
         return self.search(author)
 
+    def get_popular_books(self) -> List[BookSearchResult]:
+        """Wikisource não possui API nativa simples para 'mais populares'."""
+        return []
+
     def can_download(self, url: str) -> bool:
         return "wikisource.org/wiki/" in url
 

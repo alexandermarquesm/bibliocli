@@ -2,6 +2,8 @@ import sys
 import os
 import requests
 import re
+import json
+import time
 from typing import List
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -10,10 +12,61 @@ from src.domain.entities import BookSearchResult
 from src.application.interfaces import BookSearchProvider, BookDownloadProvider
 
 class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
+    CACHE_FILE = os.path.expanduser("~/.bibliocli_cache/search_cache.json")
+    CACHE_EXPIRATION = 86400  # 24 horas
+
+    def _get_cache(self, key: str):
+        if not os.path.exists(self.CACHE_FILE):
+             return None
+        try:
+            with open(self.CACHE_FILE, "r") as f:
+                cache_data = json.load(f)
+            
+            item = cache_data.get(key)
+            if item:
+                # Verificar expiração
+                if time.time() - item["timestamp"] < self.CACHE_EXPIRATION:
+                    # Reconstrói as entidades de domínio a partir do dict salvo
+                    return [BookSearchResult(**b) for b in item["results"]]
+                else:
+                    # Limpar item expirado da memória (opcional, será sobrescrito)
+                    pass
+        except Exception:
+            pass
+        return None
+
+    def _save_cache(self, key: str, results: List[BookSearchResult]):
+        os.makedirs(os.path.dirname(self.CACHE_FILE), exist_ok=True)
+        cache_data = {}
+        if os.path.exists(self.CACHE_FILE):
+             try:
+                 with open(self.CACHE_FILE, "r") as f:
+                     cache_data = json.load(f)
+             except Exception:
+                 pass
+        
+        # Converte as entidades para dict serializável
+        cache_data[key] = {
+            "timestamp": time.time(),
+            "results": [vars(r) for r in results]
+        }
+        
+        try:
+             with open(self.CACHE_FILE, "w") as f:
+                 json.dump(cache_data, f, ensure_ascii=False)
+        except Exception:
+             pass
+
     def search(self, query: str) -> List[BookSearchResult]:
+        cache_key = f"search_{query}"
+        cached = self._get_cache(cache_key)
+        if cached is not None:
+             return cached
+
         results = []
         try:
-            r = requests.get(f"https://gutendex.com/books/?search={query}").json()
+            # A API Gutendex costuma cair ou demorar, então o timeout de 10s é essencial
+            r = requests.get(f"https://gutendex.com/books/?search={query}", timeout=10).json()
             for item in r.get("results", [])[:20]:
                 langs = item.get("languages", [])
                 if not langs:
@@ -47,13 +100,55 @@ class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
                     year=year_proxy,
                     cover_url=item.get("formats", {}).get("image/jpeg")
                 ))
-        except Exception:
+            
+            # Salvar no cache apenas se tiver tido resposta completa
+            self._save_cache(cache_key, results)
+        except Exception as e:
+            # Caso a API caia, retorna array vazio para a CLI tratar com civilidade
             pass
         return results
 
     def search_by_author(self, author: str) -> List[BookSearchResult]:
         """Gutendex API lida nativamente com buscas por autor através do parâmetro search principal."""
         return self.search(author)
+
+    def get_popular_books(self) -> List[BookSearchResult]:
+        """Gutendex retorna os mais populares por padrão se não houver query."""
+        cache_key = "popular_books"
+        cached = self._get_cache(cache_key)
+        if cached is not None:
+             return cached
+
+        results = []
+        try:
+            r = requests.get("https://gutendex.com/books/", timeout=10).json()
+            for item in r.get("results", [])[:20]:
+                langs = item.get("languages", [])
+                if not langs:
+                    continue
+                lang_str = ", ".join(langs)
+                book_id = item["id"]
+                
+                authors = item.get("authors", [])
+                author_name = "Autor Desconhecido"
+                
+                if authors:
+                    author = authors[0]
+                    author_name = author.get("name", "Autor Desconhecido")
+
+                results.append(BookSearchResult(
+                    source="Project Gutenberg",
+                    title=item["title"],
+                    author=author_name,
+                    language=lang_str,
+                    link=f"https://www.gutenberg.org/ebooks/{book_id}",
+                    year=None,
+                    cover_url=item.get("formats", {}).get("image/jpeg")
+                ))
+            self._save_cache(cache_key, results)
+        except Exception:
+            pass
+        return results
 
     def can_download(self, url: str) -> bool:
         return "gutenberg.org/ebooks/" in url

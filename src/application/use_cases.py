@@ -64,3 +64,16 @@ class SearchBooksByAuthorUseCase:
         for provider in self.providers:
             combined_results.extend(provider.search_by_author(author))
         return combined_results
+
+class GetPopularBooksUseCase:
+    """
+    Coordena o Caso de Uso: 'Obter Livros Populares'.
+    """
+    def __init__(self, providers: List[BookSearchProvider]):
+        self.providers = providers
+        
+    def execute(self) -> List[BookSearchResult]:
+        combined_results = []
+        for provider in self.providers:
+            combined_results.extend(provider.get_popular_books())
+        return combined_results

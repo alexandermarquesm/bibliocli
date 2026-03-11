@@ -84,6 +84,10 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
             pass
         return results
 
+    def get_popular_books(self) -> List[BookSearchResult]:
+        """Open Library poderia retornar trending, mas para o flow-read Gutenberg é prioritário."""
+        return []
+
     def can_download(self, url: str) -> bool:
         return "openlibrary.org/works/" in url or "openlibrary.org/books/" in url
 

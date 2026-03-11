@@ -27,6 +27,10 @@ class BookSearchProvider(ABC):
     def search_by_author(self, author: str) -> List[BookSearchResult]:
         pass
 
+    @abstractmethod
+    def get_popular_books(self) -> List[BookSearchResult]:
+        pass
+
 class BookDownloadProvider(ABC):
     """
     Interface/Contrato (Port) para Provedores de Download.
