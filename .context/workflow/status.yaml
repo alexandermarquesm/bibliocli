@@ -1,0 +1,39 @@
+project:
+  name: "Popular books on Home page"
+  scale: MEDIUM
+  started: "2026-03-09T19:01:31.957Z"
+  current_phase: P
+
+phases:
+  P:
+    status: in_progress
+    started_at: "2026-03-09T19:01:31.957Z"
+  R:
+    status: pending
+  E:
+    status: pending
+  V:
+    status: pending
+  C:
+    status: skipped
+    reason: "Not required for scale MEDIUM"
+
+execution:
+  history:
+    - timestamp: "2026-03-09T19:01:31.957Z"
+      phase: P
+      action: started
+    - timestamp: "2026-03-09T19:01:39.779Z"
+      phase: C
+      action: phase_skipped
+    - timestamp: "2026-03-09T19:01:39.779Z"
+      phase: P
+      action: plan_linked
+      plan: "popular-books-integration"
+  last_activity: "2026-03-09T19:01:39.779Z"
+  resume_context: "Plano vinculado - aguardando revisão"
+
+approval:
+  plan_created: true
+  plan_approved: false
+
