@@ -57,11 +57,10 @@ const App = {
         State.currentSearchType,
         State.currentProvider,
       );
-      UI.renderResults(
-        results,
-        (url) => this.handleDownloadRaw(url),
-        (url) => this.handleOpenFlow(url),
-      );
+      UI.renderResults(results, {
+        onDownloadRaw: (url) => App.handleDownloadRaw(url),
+        onOpenFlow: (url) => App.handleOpenFlow(url),
+      });
       UI.setLoading(false);
     } catch (error) {
       UI.showError(error);

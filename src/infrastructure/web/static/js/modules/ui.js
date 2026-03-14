@@ -62,8 +62,8 @@ export const UI = {
     results.forEach((book) => {
       const card = BookCard.render(
         book,
-        actions.onDownloadRaw,
-        actions.onOpenFlow,
+        actions?.onDownloadRaw || (() => console.warn("DOWNLOAD_RAW_NOT_IMPLEMENTED")),
+        actions?.onOpenFlow || (() => console.warn("OPEN_FLOW_NOT_IMPLEMENTED")),
       );
       this.elements.resultsGrid.appendChild(card);
     });
