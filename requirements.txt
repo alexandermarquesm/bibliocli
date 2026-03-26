@@ -1,7 +1,0 @@
-fastapi
-openai
-pydantic
-requests
-rich
-pydantic-settings
-python-multipart
