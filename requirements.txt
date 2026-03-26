@@ -1,8 +1,0 @@
-fastapi
-openai
-pydantic
-questionary
-requests
-rich
-uvicorn
-pytest
