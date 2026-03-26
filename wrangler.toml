@@ -1,6 +1,7 @@
 name = "bibliocli"
 main = "src/infrastructure/web/main.py"
 compatibility_date = "2024-04-01"
+compatibility_flags = [ "python_workers" ]
 
 [vars]
 ENVIRONMENT = "production"
