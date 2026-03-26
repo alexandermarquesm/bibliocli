@@ -64,11 +64,7 @@ class BookController:
         import json
         
         from src.infrastructure.services.book_repository import BookRepository
-        # No Workers, o binding KV vem do ambiente.
-        # Passamos o KV se disponível no objeto providers (ou via parâmetro se preferir).
-        # Para simplificar aqui, vamos assumir que o providers pode conter o KV ou ser o KV.
-        kv_binding = getattr(self.providers, "BOOKS_KV", None)
-        repo = BookRepository(kv_binding=kv_binding)
+        repo = BookRepository()
         tmp_path = f"/tmp/bibliocli_temp_{secrets.token_hex(4)}.txt"
 
         try:
