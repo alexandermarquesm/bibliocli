@@ -8,7 +8,7 @@ from src.presentation.controllers.book_controller import BookController
 router = APIRouter(prefix="/books", tags=["Books"])
 
 @router.get("/download")
-def download_and_format_book(
+async def download_and_format_book(
     url: str,
     include_paragraphs: bool = True,
     only_metadata: bool = False,
@@ -23,7 +23,7 @@ def download_and_format_book(
         "chapter_index": chapter_index
     }
     
-    data, error = controller.get_formatted_book(url, formatting_agent, options)
+    data, error = await controller.get_formatted_book(url, formatting_agent, options)
     
     if error:
         status_code = 404 if "Índice" in error else 400

@@ -48,12 +48,10 @@ class BookController:
         # 3. Return Entities
         return domain_results
 
-    def get_formatted_book(self, url: str, formatting_agent, options: dict):
+    async def get_formatted_book(self, url: str, formatting_agent, options: dict):
         """
         Coordinates the download and AI formatting of a book.
         """
-        # Note: In a deeper refactor, this logic would move to a 
-        # dedicated UseCase that interacts with a Storage Port and Formatter Port.
         provider = next((p for p in self.providers if hasattr(p, 'can_download') and p.can_download(url)), None)
         
         if not provider:
@@ -64,7 +62,11 @@ class BookController:
         import json
         
         from src.infrastructure.services.book_repository import BookRepository
-        repo = BookRepository()
+        from src.infrastructure.services.turso_repository import TursoBookRepository
+        
+        repo_local = BookRepository()
+        repo_turso = TursoBookRepository()
+        
         tmp_path = f"/tmp/bibliocli_temp_{secrets.token_hex(4)}.txt"
 
         try:
@@ -73,21 +75,24 @@ class BookController:
             title = book_info.title if book_info else "Título Desconhecido"
             
             # --- Lógica de Cache (Clean Architecture) ---
-            # 1. Tentar carregar pela URL (Identificador Único)
-            formatted_data = repo.find_by_url(url)
-            
+            # 1. Tentar carregar pelo Turso Primeiro (Nuvem Persistente)
+            formatted_data = await repo_turso.find_by_url(url)
             if formatted_data:
-                print(f"📦 [CACHE URL] Livro encontrado no cache local via URL: {url}")
+                print(f"🌌 [CACHE TURSO] Livro encontrado via URL: {url}")
             
-            # 2. Tentar carregar pelo Autor/Título como fallback
+            # 2. Tentar carregar pela URL Local (Pacote de Deploy)
             if not formatted_data:
-                formatted_data = repo.find_formatted(author, title)
+                formatted_data = repo_local.find_by_url(url) # find_by_url local é None por padrão, mas ok.
+            
+            # 3. Tentar carregar pelo Autor/Título Local como fallback
+            if not formatted_data:
+                formatted_data = repo_local.find_formatted(author, title)
                 if formatted_data:
-                    print(f"📦 [CACHE META] Livro encontrado no cache local via Autor/Título: {author} - {title}")
+                    print(f"📦 [CACHE LOCAL] Livro encontrado via Autor/Título: {author} - {title}")
             
             if not formatted_data:
                 print(f"🌐 [NEW BOOK] Livro não encontrado. Iniciando Download e Processamento IA...")
-                # 2. Se não existir, Baixar e Formatar
+                # 4. Se não existir em lugar nenhum, Baixar e Formatar
                 success = provider.download(url, tmp_path)
                 if not success:
                     return None, "Falha ao baixar texto bruto do provedor."
@@ -106,12 +111,22 @@ class BookController:
                 # Converter para Modelo Pydantic para validar e salvar
                 from src.domain.models.book_models import FormattedBook
                 book_dict = json.loads(formatted_json_string)
-                book_dict["source_url"] = url # << Identificador
+                book_dict["source_url"] = url 
                 book_obj = FormattedBook(**book_dict)
                 
-                # Salvar no Disco para uso futuro (Mestre)
-                repo.save(book_obj)
-                print(f"💾 [SAVED] Livro processado e salvo em: ebooks/{author}/{title}.json")
+                # Salvar no Turso (Prioridade para persistência na Vercel)
+                try:
+                    await repo_turso.save(book_obj)
+                    print(f"💾 [SAVED TURSO] Livro salvo no banco de dados Turso.")
+                except Exception as e:
+                    print(f"⚠️ [TURSO ERROR] Falha ao salvar no Turso: {e}")
+                
+                # Tentar salvar Local (Pode falhar em FS Read-Only)
+                try:
+                    repo_local.save(book_obj)
+                    print(f"💾 [SAVED LOCAL] Livro salvo em: ebooks/{author}/{title}.json")
+                except Exception as e:
+                    print(f"ℹ️ [LOCAL FS] Ignorado salvamento local (FS Read-Only).")
                 
                 formatted_data = book_obj.model_dump()
             
