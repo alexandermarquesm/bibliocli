@@ -14,6 +14,27 @@ app = FastAPI(
     version="1.0"
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """
+    Inicializa o banco de dados Turso no startup da aplicação.
+    """
+    from src.infrastructure.services.turso_repository import TursoBookRepository
+    repo = TursoBookRepository()
+    app.state.turso_repo = repo
+    if repo.client:
+        print("🚀 [TURSO] Inicializando banco de dados...")
+        await repo.setup()
+        print("✅ [TURSO] Tabela formatted_books garantida.")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Fecha as conexões no shutdown da aplicação.
+    """
+    if hasattr(app.state, "turso_repo"):
+        await app.state.turso_repo.close()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

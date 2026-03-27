@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 import os
 import secrets
 import json
@@ -10,6 +10,7 @@ router = APIRouter(prefix="/books", tags=["Books"])
 @router.get("/download")
 async def download_and_format_book(
     url: str,
+    request: Request,
     include_paragraphs: bool = True,
     only_metadata: bool = False,
     chapter_index: int = None,
@@ -23,7 +24,12 @@ async def download_and_format_book(
         "chapter_index": chapter_index
     }
     
-    data, error = await controller.get_formatted_book(url, formatting_agent, options)
+    # Recupera o repositório compartilhado do estado do app
+    repo_turso = getattr(request.app.state, "turso_repo", None)
+    
+    data, error = await controller.get_formatted_book(
+        url, formatting_agent, options, repo_turso=repo_turso
+    )
     
     if error:
         status_code = 404 if "Índice" in error else 400

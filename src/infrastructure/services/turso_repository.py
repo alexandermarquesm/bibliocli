@@ -17,7 +17,7 @@ class TursoBookRepository:
             print("⚠️ [TURSO] Credentials missing. Turso repository will be disabled.")
         else:
             self.client = libsql_client.create_client(self.url, auth_token=self.auth_token)
-            self._ensure_table()
+            # A inicialização da tabela será feita via evento de startup do FastAPI
 
     def _ensure_table(self):
         if not self.client:
@@ -75,3 +75,9 @@ class TursoBookRepository:
         if rs.rows:
             return json.loads(rs.rows[0][0])
         return None
+
+    async def close(self):
+        """Fecha a conexão com o Turso."""
+        if self.client:
+            await self.client.close()
+            print("💤 [TURSO] Conexão fechada.")

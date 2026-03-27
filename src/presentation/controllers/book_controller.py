@@ -48,7 +48,7 @@ class BookController:
         # 3. Return Entities
         return domain_results
 
-    async def get_formatted_book(self, url: str, formatting_agent, options: dict):
+    async def get_formatted_book(self, url: str, formatting_agent, options: dict, repo_turso=None):
         """
         Coordinates the download and AI formatting of a book.
         """
@@ -61,11 +61,10 @@ class BookController:
         import os
         import json
         
-        from src.infrastructure.services.book_repository import BookRepository
-        from src.infrastructure.services.turso_repository import TursoBookRepository
-        
-        repo_local = BookRepository()
-        repo_turso = TursoBookRepository()
+        # Se não foi passado um repositório (ex: CLI), cria um local
+        if not repo_turso:
+            from src.infrastructure.services.turso_repository import TursoBookRepository
+            repo_turso = TursoBookRepository()
         
         tmp_path = f"/tmp/bibliocli_temp_{secrets.token_hex(4)}.txt"
 
@@ -74,25 +73,21 @@ class BookController:
             author = book_info.author if book_info else "Autor Desconhecido"
             title = book_info.title if book_info else "Título Desconhecido"
             
-            # --- Lógica de Cache (Clean Architecture) ---
-            # 1. Tentar carregar pelo Turso Primeiro (Nuvem Persistente)
+            # --- Lógica de Cache (Turso) ---
+            # Tentar carregar pelo Turso Primeiro (Nuvem Persistente)
             formatted_data = await repo_turso.find_by_url(url)
             if formatted_data:
                 print(f"🌌 [CACHE TURSO] Livro encontrado via URL: {url}")
             
-            # 2. Tentar carregar pela URL Local (Pacote de Deploy)
             if not formatted_data:
-                formatted_data = repo_local.find_by_url(url) # find_by_url local é None por padrão, mas ok.
-            
-            # 3. Tentar carregar pelo Autor/Título Local como fallback
-            if not formatted_data:
-                formatted_data = repo_local.find_formatted(author, title)
+                # Tentar carregar pelo Autor/Título no Turso como fallback
+                formatted_data = await repo_turso.find_formatted(author, title)
                 if formatted_data:
-                    print(f"📦 [CACHE LOCAL] Livro encontrado via Autor/Título: {author} - {title}")
-            
+                    print(f"🌌 [CACHE TURSO] Livro encontrado via Autor/Título: {author} - {title}")
+
             if not formatted_data:
-                print(f"🌐 [NEW BOOK] Livro não encontrado. Iniciando Download e Processamento IA...")
-                # 4. Se não existir em lugar nenhum, Baixar e Formatar
+                print(f"🌐 [NEW BOOK] Livro não encontrado no Turso. Iniciando Download e Processamento IA...")
+                # Baixar e Formatar
                 success = provider.download(url, tmp_path)
                 if not success:
                     return None, "Falha ao baixar texto bruto do provedor."
@@ -114,19 +109,12 @@ class BookController:
                 book_dict["source_url"] = url 
                 book_obj = FormattedBook(**book_dict)
                 
-                # Salvar no Turso (Prioridade para persistência na Vercel)
+                # Salvar no Turso
                 try:
                     await repo_turso.save(book_obj)
                     print(f"💾 [SAVED TURSO] Livro salvo no banco de dados Turso.")
                 except Exception as e:
                     print(f"⚠️ [TURSO ERROR] Falha ao salvar no Turso: {e}")
-                
-                # Tentar salvar Local (Pode falhar em FS Read-Only)
-                try:
-                    repo_local.save(book_obj)
-                    print(f"💾 [SAVED LOCAL] Livro salvo em: ebooks/{author}/{title}.json")
-                except Exception as e:
-                    print(f"ℹ️ [LOCAL FS] Ignorado salvamento local (FS Read-Only).")
                 
                 formatted_data = book_obj.model_dump()
             
