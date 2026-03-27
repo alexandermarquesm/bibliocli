@@ -1,6 +1,8 @@
 # 📚 BiblioCLI
 
-![BiblioCLI Web HUD Preview](docs/images/bibliocli-preview.png)
+[![Production](https://img.shields.io/badge/Production-Live-success?style=for-the-badge&logo=vercel)](https://bibliocli.vercel.app/)
+[![Python](https://img.shields.io/badge/Python-3.12+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
 Uma ferramenta poderosa e unificada para buscar, baixar e formatar livros de fontes públicas como **Project Gutenberg**, **Wikisource** e **Open Library**.
 
@@ -8,13 +10,18 @@ Este projeto foi desenhado sob os princípios da **Clean Architecture**, servind
 
 ---
 
+## 🔗 Link de Produção
+Acesse a versão estável em: [https://bibliocli.vercel.app/](https://bibliocli.vercel.app/)
+
+---
+
 ## ✨ Funcionalidades
 
-- 🔍 **Busca Multiprovedor**: Pesquise títulos ou autores simultaneamente em várias fontes bibliográficas.
-- 📥 **Download e Limpeza Inteligente**: Baixa e-books e usa **IA (OpenAI)** para remover metadados, prefácios e sumários, entregando apenas o conteúdo narrativo.
+- 🔍 **Busca Multiprovedor**: Pesquise títulos ou autores simultaneamente em várias fontes bibliográficas (Gutenberg, Wikisource, Open Library).
+- 📥 **Download Inteligente**: Baixa e-books e usa **IA (OpenAI)** para remover metadados, prefácios e sumários, entregando apenas o conteúdo narrativo.
 - 🏗️ **Arquitetura Profissional**: Divisão clara entre Domínio, Aplicação e Infraestrutura, garantindo manutenibilidade e testabilidade.
 - 🌐 **Nexus Web HUD**: Interface web moderna com estética Cyberpunk, efeitos de _glitch_ de alta fidelidade e design responsivo.
-- 🎨 **Terminal Rico**: Tabelas, barras de progresso e logs coloridos no terminal via `Rich`.
+- 🎨 **Terminal Rico**: Tabelas, barras de progresso e CLI interativa via `Rich` e `Questionary`.
 
 ---
 
@@ -22,7 +29,8 @@ Este projeto foi desenhado sob os princípios da **Clean Architecture**, servind
 
 - **Core**: Python 3.12+ & [uv](https://github.com/astral-sh/uv)
 - **API**: FastAPI & Uvicorn
-- **UI Terminal**: Rich & Typer
+- **Banco de Dados**: Turso (libsql) para persistência de livros formatados.
+- **UI Terminal**: Rich & Questionary
 - **UI Web**: Vanilla JS (ES6+), CSS3 (Cyberpunk Design System)
 - **IA**: OpenAI API (GPT-4o/o1)
 
@@ -42,15 +50,15 @@ Este projeto foi desenhado sob os princípios da **Clean Architecture**, servind
    uv sync
    ```
 
-### Configuração de IA (Opcional)
+### Configuração de IA & Banco de Dados
 
-Para a limpeza automática via IA, defina sua chave da API:
+Crie um arquivo `.env` na raiz do projeto:
 
-```bash
-export OPENAI_API_KEY="sua-chave-aqui"
+```env
+OPENAI_API_KEY="sua-chave-aqui"
+TURSO_URL="sua-url-turso"
+TURSO_AUTH_TOKEN="seu-token-turso"
 ```
-
-_Se a chave não for fornecida, o sistema usará um motor de limpeza baseado em Regex como fallback._
 
 ---
 
@@ -58,40 +66,47 @@ _Se a chave não for fornecida, o sistema usará um motor de limpeza baseado em 
 
 ### 1. Interface de Linha de Comando (CLI)
 
-O projeto define atalhos otimizados via `pyproject.toml`.
+O projeto define atalhos otimizados via `uv`.
 
-- **Buscar Livros:**
+- **Modo Interativo:**
+  ```bash
+  uv run bibliocli
+  ```
+
+- **Buscar Livros (Direto):**
   ```bash
   uv run bibliocli search "Dom Casmurro" --book
   ```
-- **Baixar um Livro:**
+
+- **Download Direto:**
   ```bash
   uv run bibliocli download "URL_DO_LIVRO" --name "nome.txt"
   ```
 
 ### 2. Nexus Web HUD (Interface Moderna)
 
-Inicia o centro de comando digital com fatiamento de interface e estética retro-futurista.
+Inicia o servidor web local com interface gráfica.
 
 ```bash
 uv run bibliocli-server
 ```
 
 > [!TIP]
-> Com o servidor rodando, acesse `http://127.0.0.1:8000` para a interface gráfica ou `/docs` para a documentação Swagger.
+> Com o servidor rodando, acesse `http://127.0.0.1:8000` para a interface gráfica ou `/docs` para a documentação Swagger da API.
 
 ---
 
-## 🏛️ Clean Architecture (A Anatomia do Projeto)
+## 🏛️ Clean Architecture
 
-O BiblioCLI segue rigorosamente a separação de responsabilidades:
+O BiblioCLI segue rigorosamente a separação de responsabilidades para garantir escalabilidade:
 
 ```mermaid
 graph TD
     subgraph Infrastructure
-        CLI[CLI Driver]
+        CLI[CLI Driver / Typer]
         WEB[FastAPI Server]
-        API_CL[OpenAI Client]
+        REPO[Turso/libsql Repository]
+        PROV[Gutenberg/Wikisource Providers]
     end
     subgraph Application
         UC[Use Cases]

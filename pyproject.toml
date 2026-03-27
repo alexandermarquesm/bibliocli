@@ -1,38 +1,32 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
-
 [project]
 name = "bibliocli"
-version = "0.1.0"
-description = "Uma CLI unificada para buscar e baixar livros de fontes públicas como WikiSource, Project Gutenberg e Open Library."
-readme = "README.md"
-license = { text = "MIT" }
-requires-python = ">=3.12"
-dependencies = [
-    "fastapi>=0.133.1",
-    "openai>=1.40.0",
-    "pydantic>=2.0.0",
-    "questionary>=2.1.1",
-    "requests>=2.32.5",
-    "rich>=14.3.3",
-    "uvicorn>=0.41.0",
-    "pytest>=8.0.0",
-    "libsql-client>=0.3.1",
-    "python-dotenv>=1.0.1",
+version = "1.0.0"
+description = "Uma ferramenta poderosa e unificada para buscar, baixar e formatar livros de fontes públicas."
+authors = [
+    { name = "Alexander Marques", email = "alexandermarquesm@gmail.com" }
 ]
+dependencies = [
+    "fastapi",
+    "openai",
+    "pydantic",
+    "questionary",
+    "requests",
+    "rich",
+    "uvicorn",
+    "pytest",
+    "python-dotenv",
+    "libsql-client"
+]
+readme = "README.md"
+requires-python = ">=3.12"
 
-[tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
-
-[tool.uv]
-package = true
+[tool.setuptools]
+packages = ["src"]
 
 [project.scripts]
 bibliocli = "src.infrastructure.cli.cli_app:run_cli"
-bibliocli-server = "src.infrastructure.web.server:run_server"
+bibliocli-server = "src.infrastructure.web.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
