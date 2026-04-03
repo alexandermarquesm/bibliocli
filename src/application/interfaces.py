@@ -8,6 +8,12 @@ from abc import ABC, abstractmethod
 from typing import List
 from src.domain.entities import BookSearchResult
 
+class ProviderUnavailableError(Exception):
+    """Exceção lançada quando um provedor externo (ex: Gutenberg) está fora do ar ou lento."""
+    def __init__(self, message: str, provider_name: str = None):
+        super().__init__(message)
+        self.provider_name = provider_name
+
 class RestrictedBookError(Exception):
     """Exceção lançada quando um livro exige login/empréstimo para ser baixado."""
     def __init__(self, message: str, info: BookSearchResult = None):

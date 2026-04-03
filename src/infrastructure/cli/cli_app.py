@@ -36,7 +36,6 @@ def run_cli():
 
     # Lógica CLI Padrão
     providers = [
-
         WikisourceProvider(),
         GutenbergProvider(),
         OpenLibraryProvider()

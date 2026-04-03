@@ -254,3 +254,15 @@
       drop-shadow(-3px 2px 0 rgba(0, 0, 255, 0.4));
   }
 }
+@keyframes error-flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(255, 0, 85, 0.8), 0 0 20px rgba(255, 0, 85, 0.4);
+    transform: scale(1);
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.3;
+    text-shadow: none;
+    transform: scale(1.02);
+  }
+}

@@ -63,11 +63,25 @@ class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
         if cached is not None:
              return cached
 
+        from src.application.interfaces import ProviderUnavailableError
         results = []
         try:
-            # A API Gutendex costuma cair ou demorar, então o timeout de 10s é essencial
-            r = requests.get(f"https://gutendex.com/books/?search={query}", timeout=10).json()
-            for item in r.get("results", [])[:20]:
+            url = f"https://gutendex.com/books/?search={query}"
+            r = requests.get(url, timeout=10)
+            
+            if r.status_code >= 500:
+                 raise ProviderUnavailableError(
+                      f"O servidor do Project Gutenberg retornou erro {r.status_code}.",
+                      provider_name="Project Gutenberg"
+                 )
+            
+            if r.status_code != 200:
+                return []
+                
+            data = r.json()
+            items = data.get("results", [])
+                
+            for item in items[:20]:
                 langs = item.get("languages", [])
                 if not langs:
                     continue
@@ -81,16 +95,11 @@ class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
                 if authors:
                     author = authors[0]
                     name = author.get("name", "Autor Desconhecido")
-                    
-                    # Apenas o nome agora, conforme solicitado pelo usuário
                     author_name = name
-                    
-                    # O ano ainda é guardado no campo correto
                     death = author.get("death_year")
                     if death:
                         year_proxy = str(death)
 
-                # Traduz do JSON para a nossa Entidade de Domínio Pura
                 results.append(BookSearchResult(
                     source="Project Gutenberg",
                     title=item["title"],
@@ -101,11 +110,23 @@ class GutenbergProvider(BookSearchProvider, BookDownloadProvider):
                     cover_url=item.get("formats", {}).get("image/jpeg")
                 ))
             
-            # Salvar no cache apenas se tiver tido resposta completa
             self._save_cache(cache_key, results)
-        except Exception as e:
-            # Caso a API caia, retorna array vazio para a CLI tratar com civilidade
+            
+        except requests.exceptions.Timeout:
+             raise ProviderUnavailableError(
+                  "Tempo esgotado ao conectar com o Project Gutenberg (Timeout).",
+                  provider_name="Project Gutenberg"
+             )
+        except requests.exceptions.ConnectionError:
+             raise ProviderUnavailableError(
+                  "Não foi possível conectar ao servidor do Project Gutenberg.",
+                  provider_name="Project Gutenberg"
+             )
+        except ProviderUnavailableError:
+             raise
+        except Exception:
             pass
+            
         return results
 
     def search_by_author(self, author: str) -> List[BookSearchResult]:

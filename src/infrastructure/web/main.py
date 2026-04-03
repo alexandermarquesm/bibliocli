@@ -1,39 +1,57 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
 from src.infrastructure.web.routes import search, download, download_raw, index
+from src.application.interfaces import ProviderUnavailableError
 
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(
-    title="BiblioCLI API", 
-    description="Backend API to search, download and format eBooks for TTS Engines.",
-    version="1.0"
-)
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """
-    Inicializa o banco de dados Turso no startup da aplicação.
+    Lifespan context manager for FastAPI.
+    Handles startup (setup database) and shutdown (close connections).
     """
     from src.infrastructure.services.turso_repository import TursoBookRepository
     repo = TursoBookRepository()
     app.state.turso_repo = repo
+    
+    # Startup logic
     if repo.client:
         print("🚀 [TURSO] Inicializando banco de dados...")
         await repo.setup()
         print("✅ [TURSO] Tabela formatted_books garantida.")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Fecha as conexões no shutdown da aplicação.
-    """
+    
+    yield # Separator between startup and shutdown
+    
+    # Shutdown logic
     if hasattr(app.state, "turso_repo"):
         await app.state.turso_repo.close()
+
+app = FastAPI(
+    title="BiblioCLI API", 
+    description="Backend API to search, download and format eBooks for TTS Engines.",
+    version="1.0",
+    lifespan=lifespan
+)
+
+
+
+@app.exception_handler(ProviderUnavailableError)
+async def provider_unavailable_exception_handler(request: Request, exc: ProviderUnavailableError):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "ProviderUnavailable",
+            "message": str(exc),
+            "provider": exc.provider_name
+        },
+    )
 
 app.add_middleware(
     CORSMiddleware,

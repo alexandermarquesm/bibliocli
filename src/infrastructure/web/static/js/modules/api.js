@@ -8,7 +8,16 @@ export const API = {
   async search(query, type, provider) {
     const url = `${CONFIG.ENDPOINTS.SEARCH}?query=${encodeURIComponent(query)}&search_type=${type}&provider_name=${provider}`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    if (!response.ok) {
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.message || errorMsg;
+        } catch (e) { /* fallback to default message */ }
+        throw new Error(errorMsg);
+    }
+    
     return await response.json();
   },
 

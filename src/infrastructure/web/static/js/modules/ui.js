@@ -72,7 +72,8 @@ export const UI = {
   showError(error) {
     console.error("CRITICAL_SYSTEM_ERROR:", error);
     this.setLoading(false);
+    const msg = error.message ? error.message.toUpperCase() : "NEXUS_LINK_DEGRADED_";
     this.elements.resultsGrid.innerHTML =
-      '<div class="empty-nexus">CONNECTION_INTERRUPTED_</div>';
+      `<div class="error-nexus">[!] SYSTEM_REJECTION: ${msg}</div>`;
   },
 };
