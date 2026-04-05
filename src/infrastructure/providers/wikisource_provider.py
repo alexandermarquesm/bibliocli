@@ -9,59 +9,202 @@ from src.domain.entities import BookSearchResult
 from src.application.interfaces import BookSearchProvider, BookDownloadProvider
 
 class WikisourceProvider(BookSearchProvider, BookDownloadProvider):
+    def _get_wikidata_info(self, qids: List[str], domain: str) -> dict:
+        """
+        Busca Autores (P50/P170) e Imagens (P18) no Wikidata em lote.
+        """
+        if not qids: return {}
+        
+        results = {}
+        headers = {'User-Agent': 'MeuLeitorApp/1.0 (dev@exemplo.com)'}
+        try:
+            api_url = "https://www.wikidata.org/w/api.php"
+            params = {
+                "action": "wbgetentities",
+                "ids": "|".join(qids),
+                "props": "claims|labels",
+                "languages": domain, 
+                "format": "json"
+            }
+            r = requests.get(api_url, params=params, headers=headers).json()
+            entities = r.get("entities", {})
+            
+            author_qids_to_fetch = []
+            entity_map = {} 
+            
+            for qid, data in entities.items():
+                results[qid] = {"author": None, "cover_url": None}
+                claims = data.get("claims", {})
+                
+                # --- CAPA (P18) ---
+                if "P18" in claims:
+                    img_name = claims["P18"][0].get("mainsnak", {}).get("datavalue", {}).get("value")
+                    if img_name:
+                         import hashlib
+                         safe_name = img_name.replace(" ", "_")
+                         md5 = hashlib.md5(safe_name.encode('utf-8')).hexdigest()
+                         results[qid]["cover_url"] = f"https://upload.wikimedia.org/wikipedia/commons/thumb/{md5[0]}/{md5[:2]}/{safe_name}/400px-{safe_name}"
+
+                # --- AUTOR (P50 ou P170) ---
+                author_claim = claims.get("P50") or claims.get("P170")
+                if author_claim:
+                    auth_qid = author_claim[0].get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id")
+                    if auth_qid:
+                        entity_map[qid] = auth_qid
+                        author_qids_to_fetch.append(auth_qid)
+
+            if author_qids_to_fetch:
+                params_auth = {
+                    "action": "wbgetentities",
+                    "ids": "|".join(list(set(author_qids_to_fetch))),
+                    "props": "labels",
+                    "languages": f"{domain}|en",
+                    "format": "json"
+                }
+                r_auth = requests.get(api_url, params=params_auth, headers=headers).json()
+                auth_entities = r_auth.get("entities", {})
+                for book_qid, auth_qid in entity_map.items():
+                    auth_data = auth_entities.get(auth_qid, {})
+                    label_data = auth_data.get("labels", {}).get(domain) or auth_data.get("labels", {}).get("en")
+                    if label_data:
+                        results[book_qid]["author"] = label_data["value"]
+        except Exception: pass
+        return results
+
     def search(self, query: str) -> List[BookSearchResult]:
         results = []
         headers = {'User-Agent': 'MeuLeitorApp/1.0 (dev@exemplo.com)'}
+        wikisource_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Wikisource-logo.svg/400px-Wikisource-logo.svg.png"
         
-        # Buscar em PT
+        # --- BUSCAR EM PORTUGUÊS (PT) ---
         try:
             r_pt = requests.get(
                 "https://pt.wikisource.org/w/api.php",
-                params={"action": "query", "list": "search", "srsearch": query, "format": "json"},
+                params={
+                    "action": "query", 
+                    "list": "search", 
+                    "srsearch": query, 
+                    "format": "json"
+                },
                 headers=headers
             ).json()
-            for item in r_pt.get("query", {}).get("search", [])[:3]:
+            search_items_raw = r_pt.get("query", {}).get("search", [])[:10]
+            pageids = [str(item["pageid"]) for item in search_items_raw]
+            
+            qids = {}
+            valid_pageids = set()
+            if pageids:
+                r_props = requests.get(
+                    "https://pt.wikisource.org/w/api.php",
+                    params={
+                        "action": "query",
+                        "pageids": "|".join(pageids),
+                        "prop": "pageprops|categories",
+                        "cllimit": "max",
+                        "format": "json"
+                    },
+                    headers=headers
+                ).json()
+                pages = r_props.get("query", {}).get("pages", {})
+                for pid, pdata in pages.items():
+                    cats = [c.get("title", "").lower() for c in pdata.get("categories", [])]
+                    skip = any("desambiguação" in c or "listas de versões" in c or "sem fichas de dados" in c for c in cats)
+                    
+                    if not skip:
+                        valid_pageids.add(str(pid))
+                        qid = pdata.get("pageprops", {}).get("wikibase_item")
+                        if qid: qids[int(pid)] = qid
+
+            search_items = [item for item in search_items_raw if str(item["pageid"]) in valid_pageids][:4]
+
+            wikidata_payload = self._get_wikidata_info(list(qids.values()), "pt")
+
+            for item in search_items:
+                pid = item["pageid"]
+                qid = qids.get(pid)
+                w_data = wikidata_payload.get(qid, {}) if qid else {}
+                author = w_data.get("author") or "Autor Desconhecido"
+                
                 title = item["title"]
                 import re
                 year_match = re.search(r'\((\d{4})\)', title)
                 year = year_match.group(1) if year_match else None
                 
-                # Traduz do JSON para a Entidade de Domínio Pura
                 results.append(BookSearchResult(
                     source="Wikisource (PT)",
                     title=title,
-                    author="Autor Desconhecido",
+                    author=author,
                     language="pt-br",
                     link=f"https://pt.wikisource.org/wiki/{title.replace(' ', '_')}",
-                    year=year
+                    year=year,
+                    cover_url=wikisource_logo
                 ))
-        except Exception:
-            pass
+        except Exception: pass
         
-        # Buscar em EN
+        # --- BUSCAR EM INGLÊS (EN) ---
         try:
             r_en = requests.get(
                 "https://en.wikisource.org/w/api.php",
-                params={"action": "query", "list": "search", "srsearch": query, "format": "json"},
+                params={
+                    "action": "query", 
+                    "list": "search", 
+                    "srsearch": query, 
+                    "format": "json"
+                },
                 headers=headers
             ).json()
-            for item in r_en.get("query", {}).get("search", [])[:3]:
+            search_items_en_raw = r_en.get("query", {}).get("search", [])[:10]
+            pageids_en = [str(item["pageid"]) for item in search_items_en_raw]
+            
+            qids_en = {}
+            valid_pageids_en = set()
+            if pageids_en:
+                r_props_en = requests.get(
+                    "https://en.wikisource.org/w/api.php",
+                    params={
+                        "action": "query",
+                        "pageids": "|".join(pageids_en),
+                        "prop": "pageprops|categories",
+                        "cllimit": "max",
+                        "format": "json"
+                    },
+                    headers=headers
+                ).json()
+                pages_en = r_props_en.get("query", {}).get("pages", {})
+                for pid, pdata in pages_en.items():
+                    cats = [c.get("title", "").lower() for c in pdata.get("categories", [])]
+                    skip = any("disambiguation" in c or "versions pages" in c for c in cats)
+                    
+                    if not skip:
+                        valid_pageids_en.add(str(pid))
+                        qid = pdata.get("pageprops", {}).get("wikibase_item")
+                        if qid: qids_en[int(pid)] = qid
+
+            search_items_en = [item for item in search_items_en_raw if str(item["pageid"]) in valid_pageids_en][:4]
+
+            wikidata_payload_en = self._get_wikidata_info(list(qids_en.values()), "en")
+
+            for item in search_items_en:
+                pid = item["pageid"]
+                qid = qids_en.get(pid)
+                w_data = wikidata_payload_en.get(qid, {}) if qid else {}
+                author = w_data.get("author") or "Autor Desconhecido"
+                
                 title = item["title"]
                 import re
                 year_match = re.search(r'\((\d{4})\)', title)
                 year = year_match.group(1) if year_match else None
                 
-                # Traduz do JSON para a Entidade de Domínio Pura
                 results.append(BookSearchResult(
                     source="Wikisource (EN)",
                     title=title,
-                    author="Autor Desconhecido",
+                    author=author,
                     language="en",
                     link=f"https://en.wikisource.org/wiki/{title.replace(' ', '_')}",
-                    year=year
+                    year=year,
+                    cover_url=wikisource_logo
                 ))
-        except Exception:
-            pass
+        except Exception: pass
             
         return results
 
@@ -89,90 +232,84 @@ class WikisourceProvider(BookSearchProvider, BookDownloadProvider):
 
     def download(self, url: str, destiny_path: str) -> bool:
         """
-        Baixa o texto do Wikisource. Usa a API de 'parse' para garantir que 
-        conteúdos transcluidos (comuns em livros) sejam processados corretamente.
+        Baixa o texto do Wikisource. Usa a API de exportação WSExport para
+        garantir um arquivo .txt perfeitamente formatado.
         """
         import urllib.parse
         try:
-            # Extrair e decodificar título
+            # Extrair título já formatado para a URL (com underlines)
             title_quoted = url.split("/wiki/")[-1]
-            title = urllib.parse.unquote(title_quoted)
             domain = "pt" if "pt.wikisource.org" in url else "en"
             
             headers = {'User-Agent': 'MeuLeitorApp/1.0 (dev@exemplo.com)'}
-            api_url = f"https://{domain}.wikisource.org/w/api.php"
+            export_url = f"https://ws-export.wmcloud.org/?format=txt&lang={domain}&page={title_quoted}"
             
-            # 1. Tentar obter o conteúdo da página principal via Parse
-            # Parse resolve transclusões <pages /> que o extracts as vezes ignora
-            params_main = {
-                "action": "parse",
-                "page": title,
-                "prop": "text",
-                "format": "json",
-                "disablelimitreport": 1
-            }
-            r_main = requests.get(api_url, params=params_main, headers=headers).json()
-            main_html = r_main.get("parse", {}).get("text", {}).get("*", "")
-            full_content = self._clean_html(main_html)
+            r = requests.get(export_url, headers=headers)
             
-            # 2. Buscar subpáginas (capítulos/partes)
-            params_sub = {
-                "action": "query",
-                "list": "allpages",
-                "apprefix": f"{title}/",
-                "apnamespace": 0,
-                "aplimit": "max",
-                "format": "json"
-            }
-            r_sub = requests.get(api_url, params=params_sub, headers=headers).json()
-            subpages = r_sub.get("query", {}).get("allpages", [])
-            
-            if subpages:
-                print(f"Detectados {len(subpages)} capítulos/partes em '{title}'. Mesclando...")
+            if r.status_code == 200:
+                text_content = r.text
                 
-                for sub in subpages:
-                    sub_title = sub["title"]
-                    params_sub_get = {
-                        "action": "parse",
-                        "page": sub_title,
-                        "prop": "text",
-                        "format": "json"
-                    }
-                    r_sub_res = requests.get(api_url, params=params_sub_get, headers=headers).json()
-                    sub_html = r_sub_res.get("parse", {}).get("text", {}).get("*", "")
-                    sub_text = self._clean_html(sub_html)
+                # O WSExport pode retornar HTML caso falhe em renderizar uma página não suportada.
+                if "<html" in text_content[:500].lower():
+                    print(f"Aviso: O WSExport retornou uma página de erro HTML para '{title_quoted}'.")
+                    return False
                     
-                    if sub_text:
-                        full_content += f"\n\n--- {sub_title} ---\n\n"
-                        full_content += sub_text
-            
-            # Validação: Se após o parse o conteúdo for irrelevante
-            if not full_content or len(full_content) < 500:
-                 print(f"Aviso: O conteúdo de '{title}' parece ser apenas um portal ou índice vazio.")
-                 return False
-
-            with open(destiny_path, "w", encoding="utf-8") as f:
-                f.write(full_content)
-            return True
+                with open(destiny_path, "w", encoding="utf-8") as f:
+                    f.write(text_content)
+                return True
+            else:
+                print(f"Aviso: O WSExport falhou com status {r.status_code} para '{title_quoted}'.")
+                return False
 
         except Exception as e:
-            print(f"Erro ao processar capítulos do Wikisource: {e}")
+            print(f"Erro ao processar download do Wikisource: {e}")
             
         return False
 
     def get_info(self, url: str) -> BookSearchResult:
-        title = url.split("/wiki/")[-1].replace("_", " ")
-        domain = "PT" if "pt.wikisource.org" in url else "EN"
+        import urllib.parse
+        title_quoted = url.split("/wiki/")[-1]
+        title = urllib.parse.unquote(title_quoted)
+        domain = "pt" if "pt.wikisource.org" in url else "en"
+        wikisource_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Wikisource-logo.svg/400px-Wikisource-logo.svg.png"
         
+        headers = {'User-Agent': 'MeuLeitorApp/1.0 (dev@exemplo.com)'}
+        api_url = f"https://{domain}.wikisource.org/w/api.php"
+        
+        qid = None
+        try:
+            # Buscar apenas QID para o Autor
+            r = requests.get(
+                api_url, 
+                params={
+                    "action": "query",
+                    "titles": title,
+                    "prop": "pageprops",
+                    "format": "json"
+                },
+                headers=headers
+            ).json()
+            pages = r.get("query", {}).get("pages", {})
+            for pid, pdata in pages.items():
+                qid = pdata.get("pageprops", {}).get("wikibase_item")
+        except Exception: pass
+
+        # Hidratação do Autor via Wikidata
+        author = "Autor Desconhecido"
+        if qid:
+            w_data = self._get_wikidata_info([qid], domain).get(qid, {})
+            if w_data.get("author"): author = w_data["author"]
+
         import re
         year_match = re.search(r'\((\d{4})\)', title)
         year = year_match.group(1) if year_match else None
         
         return BookSearchResult(
-            source=f"Wikisource ({domain})",
+            source=f"Wikisource ({domain.upper()})",
             title=title,
-            author="Autor Desconhecido",
-            language="pt" if domain == "PT" else "en",
+            author=author,
+            language=domain,
             link=url,
-            year=year
+            year=year,
+            cover_url=wikisource_logo
         )

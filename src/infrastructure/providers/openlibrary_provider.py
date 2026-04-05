@@ -111,69 +111,62 @@ class OpenLibraryProvider(BookSearchProvider, BookDownloadProvider):
         try:
             # 1. Coletar IDs do Internet Archive (ia_ids)
             ia_ids = []
-            
             obj_type = "works" if olid.endswith("W") else "books"
             
-            # Tenta via Search primeiro (geralmente tem o ia_id principal)
-            search_api = f"https://openlibrary.org/search.json?q=key:/{obj_type}/{olid}"
-            r_search = requests.get(search_api).json()
-            docs = r_search.get("docs", [])
-            if docs:
-                ia_ids.extend(docs[0].get("ia", []))
+            # Busca IDs do IA via Search (rápido)
+            r_search = requests.get(f"https://openlibrary.org/search.json?q=key:/{obj_type}/{olid}").json()
+            if r_search.get("docs"):
+                ia_ids.extend(r_search["docs"][0].get("ia", []))
             
-            # Se não achou ou se for uma 'work', vamos buscar nas edições explicitamente
-            if obj_type == "works":
-                editions_api = f"https://openlibrary.org/works/{olid}/editions.json?limit=50"
-                r_editions = requests.get(editions_api).json()
+            if obj_type == "works" and not ia_ids:
+                r_editions = requests.get(f"https://openlibrary.org/works/{olid}/editions.json?limit=50").json()
                 for entry in r_editions.get("entries", []):
-                    if "ia" in entry:
-                        ia_ids.extend(entry["ia"])
-                    elif "ocaid" in entry:
-                        ia_ids.append(entry["ocaid"])
-
-            # Remove duplicatas mantendo a ordem
-            ia_ids = list(dict.fromkeys(ia_ids))
+                    if "ia" in entry: ia_ids.extend(entry["ia"])
+                    elif "ocaid" in entry: ia_ids.append(entry["ocaid"])
+            
+            ia_ids = list(dict.fromkeys(ia_ids)) # Duplicatas fora
             
             if not ia_ids:
-                print(f"Aviso: Não foram encontrados registros digitais para '{olid}' ou suas edições.")
+                print(f"Aviso: Não foram encontrados registros digitais para '{olid}'.")
                 return False
 
-            # 2. Tentar download para cada ia_id encontrado
+            # 2. Varredura Inteligente do Internet Archive
             tried_restricted = False
-            
             for ia_id in ia_ids:
-                possible_urls = [
-                    f"https://archive.org/download/{ia_id}/{ia_id}_djvu.txt",
-                    f"https://archive.org/download/{ia_id}/{ia_id}.txt",
-                    f"https://archive.org/stream/{ia_id}/{ia_id}_djvu.txt"
-                ]
+                try:
+                    # Consultar metadados do IA para ver os arquivos reais
+                    meta_url = f"https://archive.org/metadata/{ia_id}"
+                    meta_r = requests.get(meta_url, timeout=10).json()
+                    files = meta_r.get("files", [])
+                    
+                    # Filtrar apenas TXTs e ordenar por tamanho (maior = provavelmente o livro completo)
+                    txt_files = [f for f in files if f["name"].endswith(".txt")]
+                    txt_files.sort(key=lambda x: int(x.get("size", 0)), reverse=True)
+                    
+                    if not txt_files: continue
 
-                for d_url in possible_urls:
-                    try:
+                    for txt_info in txt_files:
+                        f_name = txt_info["name"]
+                        d_url = f"https://archive.org/download/{ia_id}/{f_name}"
+                        
                         resp = requests.get(d_url, timeout=10)
                         if resp.status_code == 200 and len(resp.text) > 1000:
-                            if "<!DOCTYPE html>" in resp.text[:200]:
-                                continue
+                            if "<!DOCTYPE html>" in resp.text[:200]: continue
                             with open(destiny_path, "w", encoding="utf-8") as f:
                                 f.write(resp.text)
                             return True
                         elif resp.status_code in [401, 403]:
                             tried_restricted = True
-                    except Exception:
-                        continue
+                except Exception:
+                    continue
 
-            # 3. Se falhou e detectamos restrição, lança o erro especializado
+            # 3. Se falhou e detectamos restrição
             if tried_restricted:
                  info = self.get_info(url)
                  raise RestrictedBookError(f"O livro '{olid}' requer empréstimo.", info=info)
-            else:
-                 print(f"Erro: Não foi possível encontrar um arquivo de texto livre para '{olid}'.")
 
-        except RestrictedBookError:
-            raise # Repassa o erro especializado
-        except Exception as e:
-            print(f"Erro ao processar OpenLibrary ({olid}): {e}")
-            
+        except RestrictedBookError: raise
+        except Exception as e: print(f"Erro no OpenLibrary ({olid}): {e}")
         return False
 
     def get_info(self, url: str) -> BookSearchResult:
