@@ -3,6 +3,11 @@
 [![Production](https://img.shields.io/badge/Production-Live-success?style=for-the-badge&logo=vercel)](https://bibliocli.vercel.app/)
 [![Python](https://img.shields.io/badge/Python-3.12+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+<br>
+
+<p align="center">
+  <img src="docs/images/bibliocli-preview.png" alt="BiblioCLI Preview" width="800">
+</p>
 
 Uma ferramenta poderosa e unificada para buscar, baixar e formatar livros de fontes públicas como **Project Gutenberg**, **Wikisource** e **Open Library**.
 
