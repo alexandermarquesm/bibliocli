@@ -24,3 +24,6 @@ ebooks/
 .env
 .uv/
 .context/
+
+# Test Outputs
+tests/outputs/

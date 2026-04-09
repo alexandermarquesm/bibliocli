@@ -1,1 +1,1 @@
-from src.infrastructure.web.main import app
+from bibliocli.infrastructure.web.main import app

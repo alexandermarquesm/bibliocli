@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiblioCLI - Quantum Digital Library</title>
+    <meta name="description" content="A fronteira final da literatura digital. Busque e baixe livros com tecnologia de ponta.">
+    
+    <!-- UI-UX-PRO-MAX Recommended Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <!-- Stylesheets (Modularized) -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/png" href="/static/assets/logo.png">
+</head>
+<body>
+    <header>
+        <div class="header-main">
+            <img src="/static/assets/logo.png" alt="BiblioCLI Logo" class="logo-img">
+            <div class="logo-text-wrapper">
+                <div class="logo" data-text="BIBLIOCLI">BIBLIOCLI</div>
+            </div>
+        </div>
+        <div class="subtitle">Nexus Digital Repository // Terminal 1.0</div>
+    </header>
+
+    <main>
+        <section class="hud-search">
+            <div class="search-type-hud">
+                <button class="hud-btn active" id="type-book">BOOK</button>
+                <button class="hud-btn" id="type-author">AUTHOR</button>
+            </div>
+            
+            <div class="input-hud-group">
+                <input type="text" id="search-input" placeholder="READY FOR INPUT_">
+                <button class="search-hud-btn" id="search-btn" data-text="EXECUTE">
+                    <!-- Slices Refinados (Menores e com menos deslocamento) -->
+                    <div class="btn-glitch-strip" style="--top: 0px; --h: 5px; --delay: 0s; --name: glitch-5; --x1: -15px; --x2: 12px; --hue1: -10deg; --hue2: 5deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 5px; --h: 4px; --delay: 0.5s; --name: glitch-8; --x1: 10px; --x2: -18px; --hue1: 15deg; --hue2: -5deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 9px; --h: 6px; --delay: 0.2s; --name: glitch-6; --x1: -12px; --x2: 15px; --hue1: -20deg; --hue2: 12deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 15px; --h: 5px; --delay: 0.8s; --name: glitch-10; --x1: 18px; --x2: -10px; --hue1: 10deg; --hue2: -25deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 20px; --h: 4px; --delay: 0.1s; --name: glitch-7; --x1: -14px; --x2: 14px; --hue1: -8deg; --hue2: 5deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 24px; --h: 6px; --delay: 0.3s; --name: glitch-9; --x1: 15px; --x2: -15px; --hue1: 25deg; --hue2: -10deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 30px; --h: 5px; --delay: 0.6s; --name: glitch-5; --x1: -10px; --x2: 18px; --hue1: -12deg; --hue2: 8deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 35px; --h: 7px; --delay: 0.4s; --name: glitch-8; --x1: 20px; --x2: -12px; --hue1: 10deg; --hue2: -15deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 42px; --h: 6px; --delay: 0.9s; --name: glitch-6; --x1: -18px; --x2: 10px; --hue1: -15deg; --hue2: 20deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    <div class="btn-glitch-strip" style="--top: 48px; --h: 8px; --delay: 0.2s; --name: glitch-10; --x1: 12px; --x2: -18px; --hue1: 8deg; --hue2: -10deg;">
+                        <div class="strip-content"><span>EXECUTE</span></div>
+                    </div>
+                    
+                    <span class="btn-base-text">EXECUTE</span>
+                </button>
+            </div>
+
+            <button class="hud-filter-toggle" id="filter-toggle-btn">
+                <span id="toggle-icon">+</span> SOURCE_FILTERS // <span class="current-val" id="active-source-name">ALL_SOURCES</span>
+            </button>
+            
+            <div class="search-provider-hud" id="provider-nexus">
+                <button class="hud-btn active" id="prov-all">ALL_SOURCES</button>
+                <button class="hud-btn" id="prov-gutenberg">GUTENBERG</button>
+                <button class="hud-btn" id="prov-wikisource">WIKISOURCE</button>
+                <button class="hud-btn" id="prov-openlibrary">OPENLIBRARY</button>
+            </div>
+        </section>
+
+        <div id="loader" class="quantum-loader">
+            <div class="nexus-loader"></div>
+            <p>ESTABLISHING QUANTUM LINK...</p>
+        </div>
+
+        <div id="results" class="grid-quantum">
+            <div class="empty-nexus">READY FOR ARCHIVE ACCESS_</div>
+        </div>
+    </main>
+
+    <footer>
+        <p>SYSTEM.VERSION_2026.03 // DEVELOPED BY ANTIGRAVITY // ALL REPOSITORY ACCESS LOGGED_</p>
+    </footer>
+
+    <!-- Application Logic (ES Modules) -->
+    <script type="module" src="/static/js/main.js?v=8"></script>
+</body>
+</html>
